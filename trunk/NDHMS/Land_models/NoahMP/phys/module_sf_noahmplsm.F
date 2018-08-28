@@ -7106,6 +7106,7 @@ contains
 
 ! jref for urban areas
 !       IF ( parameters%urban_flag ) INFMAX == INFMAX * 0.05
+        IF ( parameters%urban_flag ) INFMAX = INFMAX * 0.60
 
        CALL WDFCND2 (parameters,WDF,WCND,SH2O(1),SICEMAX,1)
        INFMAX = MAX (INFMAX,WCND)
