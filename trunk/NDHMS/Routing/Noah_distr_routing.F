@@ -1337,10 +1337,19 @@
 
         if(i.ge.2.AND.i.le.XX-1.AND.j.ge.2.AND.j.le.YY-1) then !if grdcl chk
 ! check for boundary grid point?
-          IXX0 = SO8RT_D(i,j,1)
-          JYY0 = SO8RT_D(i,j,2)
 
-          index = SO8RT_D(i,j,3)
+            ! Set initial dummy values for steepest slope neighbor
+            IXX0 = -1
+            JYY0 = -1
+            index = -1
+            dzdx = -1.0
+            beta = -1.0
+
+            ! ADCHANGE: Always call routine to check for steepest elev+head slope
+            ! Updates IXX0, JYY0, index, and beta for steepest slope neighbor.
+            ! Note that beta will be -1 if steepest slope cannot be found.
+            call GETSUB8(IXX0,JYY0,I,J,Z,so8rt,dist(i,j,:),beta,XX,YY,index)
+            tmp_gsize = 1.0/dist(i,j,index) 
 
             if(dist(i,j,index) .le. 0) then
                write(6,*) "FATAL ERROR: dist(i,j,index) is <= zero "   
@@ -1350,15 +1359,6 @@
                call hydro_stop("In ROUTE_SUBSURFACE1() - soldep is = zero")
             endif
 
-          tmp_gsize = 1.0/dist(i,j,index)
-
-       
-          dzdx= (z(i,j) - z(IXX0,JYY0) )* tmp_gsize
-          beta=so8RT(i,j,index) + dzdx 
-
-          if(beta .lt. 1E-20 ) then   !if-then for direction...
-            call GETSUB8(IXX0,JYY0,I,J,Z,so8rt,dist(i,j,:),beta,XX,YY)
-          end if
           if(beta .gt. 0) then            !if-then for flux calc 
               if(beta .lt. 1E-20 ) then
 #ifdef HYDRO_D
@@ -1465,65 +1465,68 @@
 
 !DJG------------------------------------------------------------
 
-
-      SUBROUTINE GETSUB8(IXX0,JYY0,I,J,Z,sox,tmp_gsize,max,XX,YY)
+      SUBROUTINE GETSUB8(IXX0,JYY0,I,J,Z,sox,tmp_gsize,maxSlp,XX,YY,indxOut)
           implicit none
-          INTEGER:: IXX0,JYY0,IXX8,JYY8, XX, YY
+          INTEGER, INTENT(INOUT) :: IXX0,JYY0, indxOut
+          INTEGER, INTENT(IN) :: XX, YY
           INTEGER, INTENT(IN) :: I,J
-
           REAL,INTENT(IN) :: Z(XX,YY),sox(XX,YY,8),tmp_gsize(9)
-          REAL  max
-          max = -1
+          REAL, INTENT(INOUT) :: maxSlp
+          INTEGER :: IXX8,JYY8
+          maxSlp = -1
 
           IXX8 = I
           JYY8 = J+1
-          call GETSUB8DIR(IXX8,JYY8,I,J,Z,sox(:,:,1),IXX0,JYY0,max,tmp_gsize(1),XX,YY)
+          call GETSUB8DIR(IXX8,JYY8,I,J,Z,sox(:,:,1),IXX0,JYY0,maxSlp,tmp_gsize(1),XX,YY,1,indxOut)
 
           IXX8 = I+1
           JYY8 = J+1
-          call GETSUB8DIR(IXX8,JYY8,I,J,Z,sox(:,:,2),IXX0,JYY0,max,tmp_gsize(2),XX,YY)
+          call GETSUB8DIR(IXX8,JYY8,I,J,Z,sox(:,:,2),IXX0,JYY0,maxSlp,tmp_gsize(2),XX,YY,2,indxOut)
 
           IXX8 = I+1
           JYY8 = J
-          call GETSUB8DIR(IXX8,JYY8,I,J,Z,sox(:,:,3),IXX0,JYY0,max,tmp_gsize(3),XX,YY)
+          call GETSUB8DIR(IXX8,JYY8,I,J,Z,sox(:,:,3),IXX0,JYY0,maxSlp,tmp_gsize(3),XX,YY,3,indxOut)
 
           IXX8 = I+1
           JYY8 = J-1
-          call GETSUB8DIR(IXX8,JYY8,I,J,Z,sox(:,:,4),IXX0,JYY0,max,tmp_gsize(4),XX,YY)
+          call GETSUB8DIR(IXX8,JYY8,I,J,Z,sox(:,:,4),IXX0,JYY0,maxSlp,tmp_gsize(4),XX,YY,4,indxOut)
 
           IXX8 = I
           JYY8 = J-1
-          call GETSUB8DIR(IXX8,JYY8,I,J,Z,sox(:,:,5),IXX0,JYY0,max,tmp_gsize(5),XX,YY)
+          call GETSUB8DIR(IXX8,JYY8,I,J,Z,sox(:,:,5),IXX0,JYY0,maxSlp,tmp_gsize(5),XX,YY,5,indxOut)
 
           IXX8 = I-1
           JYY8 = J-1
-          call GETSUB8DIR(IXX8,JYY8,I,J,Z,sox(:,:,6),IXX0,JYY0,max,tmp_gsize(6),XX,YY)
+          call GETSUB8DIR(IXX8,JYY8,I,J,Z,sox(:,:,6),IXX0,JYY0,maxSlp,tmp_gsize(6),XX,YY,6,indxOut)
 
           IXX8 = I-1
           JYY8 = J
-          call GETSUB8DIR(IXX8,JYY8,I,J,Z,sox(:,:,7),IXX0,JYY0,max,tmp_gsize(7),XX,YY)
+          call GETSUB8DIR(IXX8,JYY8,I,J,Z,sox(:,:,7),IXX0,JYY0,maxSlp,tmp_gsize(7),XX,YY,7,indxOut)
 
           IXX8 = I-1
           JYY8 = J+1
-          call GETSUB8DIR(IXX8,JYY8,I,J,Z,sox(:,:,8),IXX0,JYY0,max,tmp_gsize(8),XX,YY)
+          call GETSUB8DIR(IXX8,JYY8,I,J,Z,sox(:,:,8),IXX0,JYY0,maxSlp,tmp_gsize(8),XX,YY,8,indxOut)
         RETURN
         END SUBROUTINE GETSUB8
 
-        SUBROUTINE GETSUB8DIR(IXX8,JYY8,I,J,Z,sox,IXX0,JYY0,max,tmp_gsize,XX,YY)
+        SUBROUTINE GETSUB8DIR(IXX8,JYY8,I,J,Z,sox,IXX0,JYY0,maxSlp,tmp_gsize,XX,YY,indxIn,indxOut)
         implicit none
         integer,INTENT(INOUT) ::IXX0,JYY0
         INTEGER, INTENT(IN) :: I,J,IXX8,JYY8,XX,YY
         REAL,INTENT(IN) :: Z(XX,YY),sox(XX,YY)
-        REAL, INTENT(INOUT) ::max
+        REAL, INTENT(INOUT) ::maxSlp
         real, INTENT(IN) :: tmp_gsize
+        integer, intent(in) :: indxIn
+        integer, intent(inout) :: indxOut
         real :: beta , dzdx
 
           dzdx= (z(i,j) - z(IXX0,JYY0) )/tmp_gsize
           beta=sox(i,j) + dzdx 
-          if(max < beta ) then
+          if(maxSlp < beta ) then
                    IXX0 = IXX8
                    JYY0 = JYY8
-                   max = beta 
+                   maxSlp = beta
+                   indxOut = indxIn
           end if
 
         END SUBROUTINE GETSUB8DIR
