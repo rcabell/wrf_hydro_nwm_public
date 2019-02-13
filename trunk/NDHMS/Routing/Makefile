@@ -6,6 +6,7 @@
 include ../macros
 
 OBJS = \
+    module_rt_timing_utilities.o \
 	module_date_utilities_rt.o \
 	module_UDMAP.o \
 	module_HYDRO_utils.o \
@@ -20,7 +21,7 @@ OBJS = \
 	module_date_utilities_rt.o \
 	module_NWM_io_dict.o \
 	module_NWM_io.o \
-        module_reservoir_routing.o
+    module_reservoir_routing.o
 
 all:	$(OBJS)
 
