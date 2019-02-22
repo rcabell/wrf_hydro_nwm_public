@@ -258,7 +258,7 @@ real    :: Cs         !-Channel side slope slope
 real    :: dx         !-channel lngth (m)
 real,intent(in)    :: n          !-mannings coefficient
 real    :: R          !-Hydraulic radius
-real    :: AREA       !- wetted area
+real    :: AREA,AREAC !- wetted area, of channel and compound
 real    :: h1,h2      !-tmp height variables
 real    :: z1,z2      !-z1 is 'from', z2 is 'to' elevations
 real    :: z          !-channel side distance
@@ -268,7 +268,8 @@ real    :: Kf         !-final face conveyance
 real    :: Sf         !-friction slope
 real    :: sgn        !-0 or 1 
 integer :: nod         !- node
-real ::  z20, dzx
+real    :: bfd,Tw,z20,dzx
+real    :: TwCC,WP,WPC,nCC  ! top width of compound channel, wetted perm of chan and compound
 
 ! added by Wei Yu for bad data.
 ! scale factor to impose minimum slope in channel. 
@@ -285,6 +286,25 @@ if (n.le.0.0.or.Cs.le.0.or.Bw.le.0) then
    print *, "nod, n, Cs, Bw", nod, n, Cs, Bw 
    call hydro_stop("In DIFFUSION() - Error channel coefficients.")
 endif
+
+   if(Cs .eq. 0.00000000) then
+     z = 1.0
+   else
+     z = 1.0/Cs          !channel side distance (m)
+   endif
+
+!   Tw = (Bw + 2*(z*Bw))
+   Tw = 1.5 * Bw
+   TwCC = Tw * 20
+   nCC = 50 * n
+
+   if(Bw .gt. Tw) then   !effectively infinite deep bankful
+     bfd = Bw/0.00001
+   elseif (Bw .eq. Tw) then
+     bfd =  Bw/(2.0*z)  !bankfull depth is effectively
+   else
+     bfd =  (Tw - Bw)/(2.0*z)  !bankfull depth (m)
+   endif
 
 !        Sf = ((z1+h1)-(z2+h2))/dx  !-- compute the friction slope
 !if(z1 .eq. z2) then
@@ -304,22 +324,54 @@ else
 endif
 !end  modfication
 
-sgn = SGNf(Sf)             !-- establish sign
+sgn = SGNf(Sf)            !-- establish sign
+w = 0.5*(sgn + 1.)        !-- compute upstream or downstream weighting
 
-w = 0.5*(sgn + 1.)         !-- compute upstream or downstream weighting
+!R = ((Bw + z*h1)*h1) / (Bw+ 2.0*h1*sqrt(1.0 + z*z)) !-- Hyd Radius
+!AREA = (Bw + z*h1)*h1        !-- Flow area
+ AREAC=0.0
+ if(h1 .gt. bfd) then !water outside of defined channel
+   AREA =  (Bw + bfd * z) * bfd
+   AREAC = (TwCC * (h1-bfd)) !assume compound component is rect. chan, that's 3 times the Tw
+   WP = (Bw + 2.0 * bfd * sqrt(1.0 + z*z))
+   WPC = TwCC + (2.0 * (h1-bfd)) !WPC is 2 times the Tw
+   R   = (AREA + AREAC)/(WP +WPC)  ! hydraulic radius
+   Ku = (1.0/nCC)*(R**(2./3.))*(AREA +AREAC)    !-- convenyance
+ else
+   AREA = (Bw + h1 * z ) * h1
+   WP = (Bw + 2.0 * h1 * sqrt(1.0 + z*z))
+   if(WP .gt. 0.0) then
+   R = AREA/WP
+   else
+   R = 0.0
+   endif
+   Ku = (1.0/n)*(R**(2./3.))*(AREA +AREAC)    !-- convenyance
+ endif
 
-z = 1.0/Cs                   !--channel side distance (m)
-R = ((Bw + z*h1)*h1) / (Bw+ 2.0*h1*sqrt(1.0 + z*z)) !-- Hyd Radius
-AREA = (Bw + z*h1)*h1        !-- Flow area
-Ku = (1.0/n)*(R**(2./3.))*AREA     !-- convenyance
+!R = ((Bw + z*h2)*h2)/(Bw + 2.0*h2*sqrt(1.0 + z*z)) !-- Hyd Radius
+!AREA = (Bw + z*h2)*h2        !-- Flow area
+AREAC=0.0
+ if(h2 .gt. bfd) then !water outside of defined channel
+   AREA =  (Bw + bfd * z) * bfd
+   AREAC = (TwCC * (h2-bfd)) !assume compound component is rect. chan, that's 3 times the Tw
+   WP = (Bw + 2.0 * bfd * sqrt(1.0 + z*z))
+   WPC = TwCC + (2.0 * (h2-bfd)) !WPC is 2 times the Tw
+   R   = (AREA + AREAC)/(WP +WPC)  ! hydraulic radius
+   Kd = (1.0/nCC)*(R**(2.0/3.0))*(AREA +AREAC)    !-- convenyance
+ else
+   AREA = (Bw + h2 * z ) * h2
+   WP = (Bw + 2.0 * h2 * sqrt(1.0 + z*z))
+   if(WP .gt. 0.0) then
+   R = AREA/ WP
+   else
+   R = 0.0
+   endif
+   Kd = (1.0/n)*(R**(2.0/3.0))*(AREA +AREAC)    !-- convenyance
+ endif
 
-R = ((Bw + z*h2)*h2)/(Bw + 2.0*h2*sqrt(1.0 + z*z)) !-- Hyd Radius
-AREA = (Bw + z*h2)*h2        !-- Flow area
-Kd = (1.0/n)*(R**(2.0/3.0))*AREA     !-- convenyance
+ Kf =  (1.0-w)*Kd + w*Ku      !-- conveyance 
 
-Kf =  (1.0-w)*Kd + w*Ku      !-- conveyance 
 DIFFUSION = Kf * sqrt(abs(Sf))*sgn
-
 
 100 format('z1,z2,h1,h2,kf,Dif, Sf, sgn  ',f8.3,2x,f8.3,2x,f8.4,2x,f8.4,2x,f8.3,2x,f8.3,2x,f8.3,2x,f8.0)
 
