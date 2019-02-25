@@ -720,10 +720,10 @@ subroutine rt_nlst_check(nlst)
          endif
       endif
    endif
-
-   if((nlst%channel_option .eq. 3) .and. (nlst%compound_channel)) then
-      call hydro_stop("Compound channel option not available for diffusive wave routing. ")
-   end if
+   !testing the option for compound channel for gridded routing
+   !if((nlst%channel_option .eq. 3) .and. (nlst%compound_channel)) then
+   !   call hydro_stop("Compound channel option not available for diffusive wave routing. ")
+   !end if
 
    
 end subroutine rt_nlst_check

@@ -250,7 +250,7 @@ end subroutine LEVELPOOL
 !   FUNCTION Diffusive wave
 ! ------------------------------------------------
 real function DIFFUSION(nod,z1,z20,h1,h2,dx,n, &
-     Bw, Cs)
+     Bw, Cs, Tw, TwCC, nCC)
 implicit none
 !-- channel geometry and characteristics
 real    :: Bw         !-bottom width (meters)
@@ -268,8 +268,10 @@ real    :: Kf         !-final face conveyance
 real    :: Sf         !-friction slope
 real    :: sgn        !-0 or 1 
 integer :: nod         !- node
-real    :: bfd,Tw,z20,dzx
-real    :: TwCC,WP,WPC,nCC  ! top width of compound channel, wetted perm of chan and compound
+real    :: bfd,Tw,z20,dzx,WP,WPC
+real,intent(in)    :: TwCC,nCC  ! top width of compound channel, wetted perm of chan and compound
+real    :: TwCClocal,nCClocal ! top width of compound channel, wetted perm of chan and compound
+
 
 ! added by Wei Yu for bad data.
 ! scale factor to impose minimum slope in channel. 
@@ -294,9 +296,16 @@ endif
    endif
 
 !   Tw = (Bw + 2*(z*Bw))
-   Tw = 1.5 * Bw
-   TwCC = Tw * 20
-   nCC = 50 * n
+!   read these in from the CHANPARM.TBL file. 
+
+!   Tw = 1.5 * Bw
+!   TwCC = Tw * 20
+!   nCC = 50 * n
+
+
+    !temporarily, treat the TwCC and nCC read in from CHANPARM as multipliers
+    TwCClocal = TwCC * Tw
+    nCClocal = nCC * n
 
    if(Bw .gt. Tw) then   !effectively infinite deep bankful
      bfd = Bw/0.00001
@@ -332,11 +341,11 @@ w = 0.5*(sgn + 1.)        !-- compute upstream or downstream weighting
  AREAC=0.0
  if(h1 .gt. bfd) then !water outside of defined channel
    AREA =  (Bw + bfd * z) * bfd
-   AREAC = (TwCC * (h1-bfd)) !assume compound component is rect. chan, that's 3 times the Tw
+   AREAC = (TwCClocal * (h1-bfd)) !assume compound component is rect. chan, that's 3 times the Tw
    WP = (Bw + 2.0 * bfd * sqrt(1.0 + z*z))
-   WPC = TwCC + (2.0 * (h1-bfd)) !WPC is 2 times the Tw
+   WPC = TwCClocal + (2.0 * (h1-bfd)) !WPC is 2 times the Tw
    R   = (AREA + AREAC)/(WP +WPC)  ! hydraulic radius
-   Ku = (1.0/nCC)*(R**(2./3.))*(AREA +AREAC)    !-- convenyance
+   Ku = (1.0/nCClocal)*(R**(2./3.))*(AREA +AREAC)    !-- convenyance
  else
    AREA = (Bw + h1 * z ) * h1
    WP = (Bw + 2.0 * h1 * sqrt(1.0 + z*z))
@@ -353,11 +362,11 @@ w = 0.5*(sgn + 1.)        !-- compute upstream or downstream weighting
 AREAC=0.0
  if(h2 .gt. bfd) then !water outside of defined channel
    AREA =  (Bw + bfd * z) * bfd
-   AREAC = (TwCC * (h2-bfd)) !assume compound component is rect. chan, that's 3 times the Tw
+   AREAC = (TwCClocal * (h2-bfd)) !assume compound component is rect. chan, that's 3 times the Tw
    WP = (Bw + 2.0 * bfd * sqrt(1.0 + z*z))
-   WPC = TwCC + (2.0 * (h2-bfd)) !WPC is 2 times the Tw
+   WPC = TwCClocal + (2.0 * (h2-bfd)) !WPC is 2 times the Tw
    R   = (AREA + AREAC)/(WP +WPC)  ! hydraulic radius
-   Kd = (1.0/nCC)*(R**(2.0/3.0))*(AREA +AREAC)    !-- convenyance
+   Kd = (1.0/nCClocal)*(R**(2.0/3.0))*(AREA +AREAC)    !-- convenyance
  else
    AREA = (Bw + h2 * z ) * h2
    WP = (Bw + 2.0 * h2 * sqrt(1.0 + z*z))
@@ -1222,7 +1231,7 @@ gwOption:   if(gwBaseSwCRT == 3) then
                if(from_node(i) .ne. to_node(i) .and. (to_node(i) .gt. 0) .and.(from_node(i) .gt. 0) ) &  ! added by Wei Yu
                    QLINK(i,1)=DIFFUSION(i,ZELEV(FROM_NODE(i)),ZELEV(TO_NODE(i)), &
                      HLINKTMP(FROM_NODE(i)),HLINKTMP(TO_NODE(i)), &
-                     CHANLEN(i), MannN(i), Bw(i), ChSSlp(i))
+                     CHANLEN(i), MannN(i), Bw(i), ChSSlp(i), Tw(i), Tw_CC(i), n_CC(i))
             else !--  we are just computing critical depth for outflow points
                QLINK(i,1) =0.
             endif
@@ -1356,7 +1365,7 @@ gwOption:   if(gwBaseSwCRT == 3) then
                !yw DIFFUSION(i,ZELEV(i),ZELEV(i)-(So(i)*DXRT),HLINKTMP(i), &
                    CVOLTMP(i) = CVOLTMP(i) + (QSUM(i) + QLateral(i) - &
                        DIFFUSION(i,ZELEV(i),ZELEV(i)-(So(i)*CHANLEN(i)),HLINKTMP(i), &
-                       CD(i),CHANLEN(i), MannN(i), Bw(i), ChSSlp(i)) ) * DTCT
+                       CD(i),CHANLEN(i), MannN(i), Bw(i), ChSSlp(i), Tw(i), Tw_CC(i), n_CC(i)) ) * DTCT
           elseif (TYPEL(i) .eq. 2) then              !--- into a reservoir, assume critical depth
               if ((QSUM(i)+QLateral(i) .lt. 0) .and. (gwChanCondSw == 0)) then
 #ifdef HYDRO_D
@@ -1370,7 +1379,7 @@ gwOption:   if(gwBaseSwCRT == 3) then
               !-- compute volume in reach (m^3)
                    CVOLTMP(i) = CVOLTMP(i) + (QSUM(i) + QLateral(i) - &
                           DIFFUSION(i,ZELEV(i),ZELEV(i)-(So(i)*CHANLEN(i)),HLINKTMP(i), &
-                             CD(i) ,CHANLEN(i), MannN(i), Bw(i), ChSSlp(i)) ) * DTCT
+                             CD(i) ,CHANLEN(i), MannN(i), Bw(i), ChSSlp(i), Tw(i), Tw_CC(i), n_CC(i)) ) * DTCT
           else
               print *, "FATAL ERROR: This node does not have a type.. error TYPEL =", TYPEL(i)
               call hydro_stop("In drive_CHANNEL() - error TYPEL") 
@@ -1443,7 +1452,7 @@ gwOption:   if(gwBaseSwCRT == 3) then
             if(TYPEL(i) == 0) then !-- regular channel node, finalize head and flow
                    QLINK(i,1)=DIFFUSION(i,ZELEV(FROM_NODE(i)),ZELEV(TO_NODE(i)), &
                       HLINKTMP(FROM_NODE(i)),HLINKTMP(TO_NODE(i)), &
-                      CHANLEN(i), MannN(i), Bw(i), ChSSlp(i))
+                      CHANLEN(i), MannN(i), Bw(i), ChSSlp(i), Tw(i), Tw_CC(i), n_CC(i))
             endif
          enddo
 
