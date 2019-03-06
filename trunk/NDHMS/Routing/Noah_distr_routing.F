@@ -1182,85 +1182,86 @@
 
 !DJG ----------------------------------- -----------------------------
 !ADCHANGE: Update these routines to return steepest slope neighbor index
-        subroutine getmax8dir(IXX0, JYY0, I, J, H, retent_dep, sox, tmp_gsize, maxSlp, XX, YY, indxOut)
-            use rt_timing_utilities
+subroutine getmax8dir(IXX0, JYY0, I, J, H, retent_dep, sox, tmp_gsize, maxSlp, XX, YY, indxOut)
+    use rt_timing_utilities
 
-            implicit none
+    implicit none
 
-            integer, parameter :: d8map(-1:1,-1:1) = reshape([6,5,4,7,0,3,8,1,2], [3,3])
+    integer, parameter :: d8map(-1:1, -1:1) = reshape([6, 5, 4, 7, 0, 3, 8, 1, 2], [3, 3])
 
-            integer, intent(out) :: IXX0, JYY0
-            integer, intent(out)   :: indxOut
-            integer, intent(in)    :: I, J, XX, YY
+    integer, intent(out) :: IXX0, JYY0
+    integer, intent(out) :: indxOut
+    integer, intent(in) :: I, J, XX, YY
 
-            real, intent(in)       :: H(XX, YY), retent_dep(XX, YY), sox(XX, YY, 8), tmp_gsize(9)
-            real, intent(inout)    :: maxSlp
+    real, intent(in) :: H(XX, YY), retent_dep(XX, YY), sox(XX, YY, 8), tmp_gsize(9)
+    real, intent(inout) :: maxSlp
 
-            integer :: ix, jx
-            real    :: sfx(8)! = -999
-            integer :: ij(2)
-            integer :: indx(1)
+    integer :: ix, jx
+    real :: hij
+    real :: sfx(8)! = -999
+    integer :: ij(2)
+    integer :: indx(1)
 
-            !integer :: ixx8, jyy8
-            !integer :: nx
+    !integer :: ixx8, jyy8
+    integer :: nx
 
-            IXX0 = -1
-            maxSlp = 0
-            if (h(I, J) <= retent_dep(I, J)) return
+    IXX0 = -1
+    maxSlp = 0
+    hij = h(i, j)
+    if (hij <= retent_dep(I, J)) return
 
-            call timing_start(29, 100000)                           ! RSC: temporary timing call
+    call timing_start(29, 100000)                           ! RSC: temporary timing call
 
-
-            do concurrent (jx = -1:1, ix = -1:1, .not. ((ix == jx) .and. (ix == 0)))
-
-            !mp parallel do private(ixx8, jyy8, nx), shared(i, j, sfx, h, sox, tmp_gsize), collapse(2)
-            !do jx = -1,1
-            !    do ix = -1,1
-
-
-                    block
-                        integer :: ixx8, jyy8
-                        integer :: nx
-
-                        nx = d8map(ix, jx)
-                        if (nx == 0) cycle
-
-                        associate (ixx8 => i + ix, jyy8 => j + jx)
-
-                                ! call get8dir(I+IXX8, J+JYY8, I, J, H, retent_dep, sox(:, :, nx), IXX0, JYY0, maxSlp, tmp_gsize(nx), XX, YY, nx, indxOut)
-
-                                sfx(nx) = sox(i, j, nx) - (h(IXX8, JYY8) - h(i, j)) * 0.001 / tmp_gsize(nx)
-                                ! sfx = sox(i, j, nx) - (h(IXX8, JYY8) - h(i, j)) * 0.001 / tmp_gsize(nx)
-
-                                !                    if (sfx <= 0) cycle
-                                !                    if (maxSlp < sfx) then
-                                !                        IXX0 = IXX8
-                                !                        JYY0 = JYY8
-                                !                        maxSlp = sfx
-                                !                        indxOut = nx
-                                !                    end if
-                        end associate
-
-                    end block
-
-!                 end do
-            end do
-
-            call timing_end(29, "getmax8dir")            ! RSC: temporary timing call
-
-            indx = maxloc(sfx)
-            indxOut = indx(1)
-            maxSlp = sfx(indxOut)
-            ij = findloc(d8map, indxOut) - 2     ! findloc always returns 1:n indices
-            ixx0 = ij(1) + i
-            jyy0 = ij(2) + j
-
-            ! indx = maxloc(sfx,1)
-            ! ixx0 = sfx(indxOut, 2)
-            ! jyy0 = sfx(indxOut, 3)
+    !do concurrent (jx = -1:1, ix = -1:1, .not. ((ix == jx) .and. (ix == 0)))
+    !$omp parallel do private(nx), collapse(2), schedule(dynamic)
+    do jx = -1, 1
+        do ix = -1, 1
 
 
-        end subroutine getmax8dir
+            !        block
+            !           integer :: ixx8, jyy8
+            !          integer :: nx
+
+            nx = d8map(ix, jx)
+            if (nx == 0) cycle
+
+            associate
+                (ixx8 => i + ix, jyy8 => j + jx)
+
+                ! call get8dir(I+IXX8, J+JYY8, I, J, H, retent_dep, sox(:, :, nx), IXX0, JYY0, maxSlp, tmp_gsize(nx), XX, YY, nx, indxOut)
+
+                sfx(nx) = sox(i, j, nx) - (h(IXX8, JYY8) - hij) * 0.001 / tmp_gsize(nx)
+                ! sfx = sox(i, j, nx) - (h(IXX8, JYY8) - h(i, j)) * 0.001 / tmp_gsize(nx)
+
+                !                    if (sfx <= 0) cycle
+                !                    if (maxSlp < sfx) then
+                !                        IXX0 = IXX8
+                !                        JYY0 = JYY8
+                !                        maxSlp = sfx
+                !                        indxOut = nx
+                !                    end if
+            end associate
+
+            !         end block
+
+        end do
+    end do
+    !$omp end parallel do
+
+    indx = maxloc(sfx)
+    indxOut = indx(1)
+    maxSlp = sfx(indxOut)
+    ij = findloc(d8map, indxOut) - 2     ! findloc always returns 1:n indices
+    ixx0 = ij(1) + i
+    jyy0 = ij(2) + j
+
+    ! indx = maxloc(sfx,1)
+    ! ixx0 = sfx(indxOut, 2)
+    ! jyy0 = sfx(indxOut, 3)
+
+    call timing_end(29, "getmax8dir")            ! RSC: temporary timing call
+
+end subroutine getmax8dir
 
 
 !        subroutine get8dir(IXX8, JYY8, I, J, H, RETENT_DEP, sox,               &
