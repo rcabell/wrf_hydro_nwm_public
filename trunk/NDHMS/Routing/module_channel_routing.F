@@ -298,12 +298,11 @@ endif
 !   Tw = (Bw + 2*(z*Bw))
 !   read these in from the CHANPARM.TBL file. 
 
-!   Tw = 1.5 * Bw
-!   TwCC = Tw * 20
-!   nCC = 50 * n
-
-
-    !temporarily, treat the TwCC and nCC read in from CHANPARM as multipliers
+ !  Tw = 1.5 * Bw
+ !  TwCC = Tw * 5
+ !  nCC = 2 * n
+ 
+   !temporarily, treat the TwCC and nCC read in from CHANPARM as multipliers
     TwCClocal = TwCC * Tw
     nCClocal = nCC * n
 
