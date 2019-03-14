@@ -20,7 +20,7 @@ integer, parameter :: numChVars = 10
 integer, parameter :: numLdasVars = 97
 integer, parameter :: numRtDomainVars = 7
 integer, parameter :: numLakeVars = 2
-integer, parameter :: numChGrdVars = 1
+integer, parameter :: numChGrdVars = 2
 integer, parameter :: numLsmVars = 14
 integer, parameter :: numChObsVars = 1
 integer, parameter :: numGwVars = 3
@@ -1940,17 +1940,17 @@ subroutine initChrtGrdDict(chrtGrdDict,procId,diagFlag)
 
    endif
 
-   chrtGrdDict%varNames(:) = [character(len=64) :: "streamflow"]
-   chrtGrdDict%longName(:) = [character(len=64) :: "River Flow"]
-   chrtGrdDict%units(:) = [character(len=64) :: "m3 s-1"]
-   chrtGrdDict%scaleFactor(:) = [0.1]
-   chrtGrdDict%addOffset(:) = [0.0]
-   chrtGrdDict%outFlag(:) = [0]
-   chrtGrdDict%timeZeroFlag(:) = [1]
-   chrtGrdDict%missingReal(:) = [-9999.0]
-   chrtGrdDict%fillReal(:) = [-9999.0]
-   chrtGrdDict%validMinReal(:) = [0.0]
-   chrtGrdDict%validMaxReal(:) = [500000.0]
+   chrtGrdDict%varNames(:) = [character(len=64) :: "streamflow","depth"]
+   chrtGrdDict%longName(:) = [character(len=64) :: "River Flow","River Depth"]
+   chrtGrdDict%units(:) = [character(len=64) :: "m3 s-1","meter"]
+   chrtGrdDict%scaleFactor(:) = [0.1,0.1]
+   chrtGrdDict%addOffset(:) = [0.0,0.0]
+   chrtGrdDict%outFlag(:) = [0,0]
+   chrtGrdDict%timeZeroFlag(:) = [1,1]
+   chrtGrdDict%missingReal(:) = [-9999.0,-9999.0]
+   chrtGrdDict%fillReal(:) = [-9999.0,-9999.0]
+   chrtGrdDict%validMinReal(:) = [0.0,0.0]
+   chrtGrdDict%validMaxReal(:) = [500000.0,500000.0]
 
    ! Loop through and calculate missing/fill/min/max values that will be placed
    ! into the NetCDF attributes after scale_factor/add_offset are applied.

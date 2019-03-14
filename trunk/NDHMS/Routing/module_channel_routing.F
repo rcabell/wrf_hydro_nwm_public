@@ -310,6 +310,7 @@ endif
      bfd = Bw/0.00001
    elseif (Bw .eq. Tw) then
      bfd =  Bw/(2.0*z)  !bankfull depth is effectively
+     print *, "Bw, Tw, TwCC, n, nCC", Bw, Tw, TwCClocal, n, nCClocal
    else
      bfd =  (Tw - Bw)/(2.0*z)  !bankfull depth (m)
    endif

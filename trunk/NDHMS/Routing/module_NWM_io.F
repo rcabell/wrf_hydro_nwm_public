@@ -2906,13 +2906,20 @@ subroutine output_chrtout_grd_NWM(domainId,iGrid)
    integer :: indexVarId
    ! Allocatable array to hold temporary streamflow for checking
    real, allocatable, dimension(:) :: strFlowLocal
+   ! Allocatable array to hold temporary depth for checking
+   real, allocatable, dimension(:) :: strDepthLocal
    ! Allocatable array to hold global qlink values
    real, allocatable, dimension(:,:) :: g_qlink
+   ! Allocatable array to hold global hlink values
+   real, allocatable, dimension(:) :: g_hlink
    ! Allocatable array to hold streamflow index values
    integer, allocatable, dimension(:,:) :: CH_NETLNK
    ! allocatable global array to hold grid of output streamflow values
    integer, allocatable, dimension(:,:) :: tmpFlow
    real, allocatable, dimension(:,:) :: tmpFlowReal
+   ! allocateable global array to hold grid of output depth values.
+   integer, allocatable, dimension(:,:) :: tmpDepth
+   real, allocatable, dimension(:,:) :: tmpDepthReal
    ! allocatable arrays to hold coordinate values
    real*8, allocatable, dimension(:) :: yCoord,xCoord,yCoord2
 
@@ -2967,20 +2974,30 @@ subroutine output_chrtout_grd_NWM(domainId,iGrid)
       allocate(CH_NETLNK(RT_DOMAIN(domainId)%g_ixrt,RT_DOMAIN(domainId)%g_jxrt))
       ! Global qlink values
       allocate(g_qlink(gNumLnks,2) )
+      ! Global hlink values
+      allocate(g_hlink(gNumLnks))
       ! Grid of global streamflow values via scale_factor/add_offset
       allocate(tmpFlow(RT_DOMAIN(domainId)%g_ixrt,RT_DOMAIN(domainId)%g_jxrt))
       allocate(tmpFlowReal(RT_DOMAIN(domainId)%g_ixrt,RT_DOMAIN(domainId)%g_jxrt))
+      ! Grid of global depth values via scale_factor/add_offset
+      allocate(tmpDepth(RT_DOMAIN(domainId)%g_ixrt,RT_DOMAIN(domainId)%g_jxrt))
+      allocate(tmpDepthReal(RT_DOMAIN(domainId)%g_ixrt,RT_DOMAIN(domainId)%g_jxrt))
    else
       allocate(CH_NETLNK(1,1))
       allocate(g_qlink(1,2) )
+      allocate(g_hlink(1))
       allocate(tmpFlow(1,1))
       allocate(tmpFlowReal(1,1))
+      allocate(tmpDepth(1,1))
+      allocate(tmpDepthReal(1,1))
    endif
-   ! Allocate local streamflow array. We need to do a check to
+   ! Allocate local streamflow and depth array. We need to do a check to
    ! for lake_type 2. However, we cannot set the values in the global array 
    ! to missing as this causes the model to crash.
    allocate(strFlowLocal(RT_DOMAIN(domainId)%NLINKS))
    strFlowLocal = RT_DOMAIN(domainId)%QLINK(:,1)
+   allocate(strDepthLocal(RT_DOMAIN(domainId)%NLINKS))
+   strDepthLocal = RT_DOMAIN(domainId)%HLINK(:)
    ! Loop through all the local links on this processor. For lake_type
    ! of 2, we need to manually set the streamflow values
    ! to the model NDV value.
@@ -2988,12 +3005,14 @@ subroutine output_chrtout_grd_NWM(domainId,iGrid)
       do iTmp=1,RT_DOMAIN(domainId)%NLINKS
          if (RT_DOMAIN(domainId)%TYPEL(iTmp) .eq. 2) then
             strFlowLocal(iTmp) = fileMeta%modelNdv
+            strDepthLocal(iTmp) = fileMeta%modelNdv
          endif
       end do
    endif
    if(nlst_rt(domainId)%channel_option .eq. 3) then
       call write_chanel_real(strFlowLocal,RT_DOMAIN(domainId)%map_l2g,gNumLnks,lNumLnks,g_qlink(:,1))
       call write_chanel_real(RT_DOMAIN(domainId)%qlink(:,2),RT_DOMAIN(domainId)%map_l2g,gNumLnks,lNumLnks,g_qlink(:,2))
+      call write_chanel_real(strDepthLocal,RT_DOMAIN(domainId)%map_l2g,gNumLnks,lNumLnks,g_hlink(:))
    endif
    call write_IO_rt_int(RT_DOMAIN(domainId)%GCH_NETLNK, CH_NETLNK)
 
@@ -3002,7 +3021,7 @@ subroutine output_chrtout_grd_NWM(domainId,iGrid)
    call initChrtGrdDict(fileMeta,myId,diagFlag)
 
    ! For now, we will default to outputting all variables until further notice. 
-   fileMeta%outFlag(:) = [1]
+   fileMeta%outFlag(:) = [1,1]
 
    ! Calculate datetime information.
    ! First compose strings of EPOCH and simulation start date.
@@ -3312,7 +3331,7 @@ subroutine output_chrtout_grd_NWM(domainId,iGrid)
       iret = nf90_put_var(ftn,varId,minSinceEpoch1)
       call nwmCheck(diagFlag,iret,'ERROR: Failure to place data into reference_time variable')
 
-      ! Since the only variable we are "looping" over for output is streamflow,
+      ! Since the only variable we are "looping" over for output is streamflow and depth,
       ! handle below. If other variables are added later, we can modify this
       ! section.
       do jTmp=1,RT_DOMAIN(domainId)%g_jxrt
@@ -3320,9 +3339,13 @@ subroutine output_chrtout_grd_NWM(domainId,iGrid)
             if(CH_NETLNK(iTmp,jTmp).GE.0) then
                tmpFlow(iTmp,jTmp) = NINT((g_qlink(CH_NETLNK(iTmp,jTmp),1)-fileMeta%addOffset(1))/fileMeta%scaleFactor(1))
                tmpFlowReal(iTmp,jTmp) = g_qlink(CH_NETLNK(iTmp,jTmp),1)
+               tmpDepth(iTmp,jTmp) = NINT((g_hlink(CH_NETLNK(iTmp,jTmp))-fileMeta%addOffset(1))/fileMeta%scaleFactor(1))
+               tmpDepthReal(iTmp,jTmp) = g_hlink(CH_NETLNK(iTmp,jTmp))
             else
                 tmpFlow(iTmp,jTmp) = fileMeta%fillComp(1)
                 tmpFlowReal(iTmp,jTmp) = fileMeta%fillReal(1)
+                tmpDepth(iTmp,jTmp) = fileMeta%fillComp(1)
+                tmpDepthReal(iTmp,jTmp) = fileMeta%fillReal(1)
             endif
          enddo
       enddo
@@ -3334,6 +3357,15 @@ subroutine output_chrtout_grd_NWM(domainId,iGrid)
          iret = nf90_put_var(ftn,varId,tmpFlow,(/1,1,1/),(/RT_DOMAIN(domainId)%g_ixrt,RT_DOMAIN(domainId)%g_jxrt,1/))
       else
          iret = nf90_put_var(ftn,varId,tmpFlowReal,(/1,1,1/),(/RT_DOMAIN(domainId)%g_ixrt,RT_DOMAIN(domainId)%g_jxrt,1/))
+      endif
+      call nwmCheck(diagFlag,iret,'ERROR: Unable to place streamflow values into CHRTOUT_GRID')
+      ! Place depth grid into output file.
+      iret = nf90_inq_varid(ftn,'depth',varId)
+      call nwmCheck(diagFlag,iret,'ERROR: Unable to locate depth variable.')
+      if((nlst_rt(1)%io_form_outputs .eq. 1) .or. (nlst_rt(1)%io_form_outputs .eq. 2)) then
+         iret = nf90_put_var(ftn,varId,tmpDepth,(/1,1,1/),(/RT_DOMAIN(domainId)%g_ixrt,RT_DOMAIN(domainId)%g_jxrt,1/))
+      else
+         iret = nf90_put_var(ftn,varId,tmpDepthReal,(/1,1,1/),(/RT_DOMAIN(domainId)%g_ixrt,RT_DOMAIN(domainId)%g_jxrt,1/))
       endif
       call nwmCheck(diagFlag,iret,'ERROR: Unable to place streamflow values into CHRTOUT_GRID')
 
@@ -3350,10 +3382,12 @@ subroutine output_chrtout_grd_NWM(domainId,iGrid)
       ! Close the output file
       iret = nf90_close(ftn)
       call nwmCheck(diagFlag,iret,'ERROR: Unable to close RT_DOMAIN file.')
+      call nwmCheck(diagFlag,iret,'ERROR: Unable to close CHRTOUT_GRID file.')
    endif
 
    ! Deallocate memory as needed
    deallocate(g_qlink, CH_NETLNK, tmpFlow, tmpFlowReal, strFlowLocal)
+   deallocate(g_hlink, tmpDepth, tmpDepthReal, strDepthLocal)
 
 end subroutine output_chrtout_grd_NWM
 
