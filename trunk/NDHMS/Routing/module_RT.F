@@ -1261,9 +1261,17 @@ if (nlst_rt(did)%CHANRTSWCRT.eq.1 .or. nlst_rt(did)%CHANRTSWCRT .eq. 2) then
       ! but commented out in the code, since they were a bridge to nowhere.
       ! call mpp_CHAN_PARM_INIT (BOTWID, HLINK_INIT, CHAN_SS, CHMann)  !Read chan parms from table...
       ! adding in comp channel for gridded. LKR
-      call mpp_CHAN_PARM_INIT (BOTWID,TOPWID,HLINK_INIT,CHAN_SS,CHMann,TOPWIDCC,NCC)  !Read chan parms from table...
+      if(nlst_rt(did)%compound_channel) then
+        call mpp_CHAN_PARM_INIT (BOTWID, HLINK_INIT, CHAN_SS, CHMann, TOPWID, TOPWIDCC, NCC) !Read chan parms from table
+      else
+        call mpp_CHAN_PARM_INIT (BOTWID, HLINK_INIT, CHAN_SS, CHMann)  !Read chan parms from table
+      end if
 #else
-      call CHAN_PARM_INIT (BOTWID, TOPWID, HLINK_INIT, CHAN_SS, CHMann ,TOPWIDCC,NCC)  !Read chan parms from table...
+      if(nlst_rt(did)%compound_channel) then
+          call CHAN_PARM_INIT (BOTWID, HLINK_INIT, CHAN_SS, CHMann, TOPWID, TOPWIDCC, NCC)  !Read chan parms from table
+      else
+          call CHAN_PARM_INIT (BOTWID, HLINK_INIT, CHAN_SS, CHMann)  !Read chan parms from table
+      end if
 #endif
    end if
 

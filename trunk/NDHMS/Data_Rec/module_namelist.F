@@ -307,6 +307,7 @@ CONTAINS
   call mpp_land_bcast_int1(RTOUT_DOMAIN)
   call mpp_land_bcast_int1(UDMP_OPT)
   call mpp_land_bcast_int1(reservoir_data_ingest)
+  call mpp_land_bcast_log1(compound_channel)
 #ifdef WRF_HYDRO_NUDGING
   call mpp_land_bcast_char(256, nudgingParamFile  )
   call mpp_land_bcast_char(256, netwkReExFile     )
