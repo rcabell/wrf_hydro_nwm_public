@@ -9,22 +9,27 @@ import pandas as pd
 import pytest
 import wrfhydropy
 
+from tests.utilities import wait_on_file, COMPILE_TIME, MODEL_RUN_TIME
+
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
-from utilities import print_diffs, wait_job
+from .utilities import print_diffs, wait_job
 
 
 def test_run_reference_nwm_output_sim(
-    reference_sim,
-    reference_nwm_output_sim,
-    output_dir,
-    ncores
+        reference_sim,
+        reference_nwm_output_sim,
+        output_dir,
+        ncores
 ):
-
     if reference_nwm_output_sim.model.model_config.lower().find('nwm') < 0:
         pytest.skip('NWM Output test only applicable to nwm configs')
 
     print("\nQuestion: The reference nwm ouput configuration runs successfully?\n", end='')
     print('\n')
+
+    # wait for compile to finish, if it hasn't
+    reference_exe = output_dir / 'compile_reference' / 'wrf_hydro.exe'
+    wait_on_file(reference_exe, COMPILE_TIME, "test_run_reference() timed out waiting for reference compile", True)
 
     # Set run directory and change working directory to run dir for simulation
     run_dir = output_dir / 'nwm_output_reference'
@@ -73,17 +78,27 @@ def test_run_reference_nwm_output_sim(
 
 
 def test_run_candidate_nwm_output_sim(
-    candidate_sim,
-    candidate_nwm_output_sim,
-    output_dir,
-    ncores
+        candidate_sim,
+        candidate_nwm_output_sim,
+        output_dir,
+        ncores
 ):
-
     if candidate_nwm_output_sim.model.model_config.lower().find('nwm') < 0:
         pytest.skip('NWM Output test only applicable to nwm configs')
 
     print("\nQuestion: The candidate nwm ouput configuration runs successfully?\n", end='')
     print('\n')
+
+    # wait for compile to finish, if it hasn't
+    candidate_exe = output_dir / 'compile_candidate' / 'wrf_hydro.exe'
+    wait_on_file(candidate_exe, COMPILE_TIME,
+                 "test_run_candidate_nwm_output_sim() timed out waiting for candidate compile")
+
+    # wait for channel-only restart run to finish
+    # TODO: why is this necessary? It somehow is, but I don't understand the rationale
+    channel_only_run_dir = output_dir / 'channel_only_candidate_restart'
+    wait_on_file(channel_only_run_dir.joinpath('WrfHydroSim_collected.pkl'), MODEL_RUN_TIME,
+                 "test_run_candidate_nwm_output_sim() timed out waiting for channel-only candidate run")
 
     # Set run directory and change working directory to run dir for simulation
     run_dir = output_dir / 'nwm_output_candidate'
@@ -130,7 +145,6 @@ def test_run_candidate_nwm_output_sim(
         assert job.exit_status == 0, \
             "Candidate run exited with non-zero status"
 
-
 # regression question
 def test_regression_metadata_nwm_output(output_dir):
     print("\nQuestion: The NWM output candidate metadata match those of the reference run?\n", end="")
@@ -140,10 +154,8 @@ def test_regression_metadata_nwm_output(output_dir):
     candidate_run_file = output_dir / 'nwm_output_candidate' / 'WrfHydroSim_collected.pkl'
     reference_run_file = output_dir / 'nwm_output_reference' / 'WrfHydroSim_collected.pkl'
 
-    if candidate_run_file.is_file() is False:
-        pytest.skip('Candidate run object not found, skipping test')
-    if reference_run_file.is_file() is False:
-        pytest.skip('Reference run object not found, skipping test')
+    wait_on_file(candidate_run_file, MODEL_RUN_TIME, "Candidate run object not found, skipping test")
+    wait_on_file(reference_run_file, MODEL_RUN_TIME, "Reference run object not found, skipping test")
 
     # Load run objects
     candidate_run_expected = pickle.load(candidate_run_file.open(mode="rb"))

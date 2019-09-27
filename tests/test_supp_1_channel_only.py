@@ -1,4 +1,5 @@
 import copy
+import datetime
 import datetime as dt
 import os
 import pandas as pd
@@ -6,9 +7,12 @@ import pathlib
 import pytest
 import pickle
 import sys
+import time
 import warnings
 import wrfhydropy
 import xarray as xr
+
+from tests.utilities import wait_on_file, MODEL_RUN_TIME, COMPILE_TIME, DEFAULT_LOOP_WAIT, wait_for_output_files
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from utilities import print_diffs, wait_job
@@ -95,6 +99,7 @@ EXCLUDE_VARS = ['ACMELT',
                 'reference_time',
                 'lake_inflort']
 
+
 # Channel-only Run
 def test_run_candidate_channel_only(
         candidate_sim,
@@ -110,7 +115,8 @@ def test_run_candidate_channel_only(
     print("\nQuestion: The candidate channel-only mode runs successfully?\n", end='')
     print('\n')
 
-    # re-run candidate at shorter duration since requires hourly outputs
+    # TODO: not sure why this works, but it do
+    wait_for_output_files(output_dir, 4)
 
     # Set run directory and change working directory to run dir for simulation
     run_dir = output_dir / 'channel_only_candidate_full_model_run'
@@ -123,6 +129,7 @@ def test_run_candidate_channel_only(
     candidate_sim_copy.base_hydro_namelist['hydro_nlist']['output_channelbucket_influx'] = 2
     candidate_channel_only_sim_copy = copy.deepcopy(candidate_channel_only_sim)
 
+    # re-run candidate at shorter duration since requires hourly outputs
     # Job
     exe_command = exe_cmd.format(str(ncores))
     job = wrfhydropy.Job(
@@ -225,10 +232,13 @@ def test_channel_only_matches_full(
     candidate_channel_only_run_file = \
         output_dir / 'channel_only_candidate_run' / 'WrfHydroSim_collected.pkl'
 
-    if candidate_run_file.is_file() is False:
-        pytest.skip('Candidate run object not found, skipping test')
-    if candidate_channel_only_run_file.is_file() is False:
-        pytest.skip('candidate_channel_only run object not found, skipping test')
+    wait_on_file(candidate_run_file, MODEL_RUN_TIME, "Candidate run object not found, skipping test")
+    wait_on_file(candidate_channel_only_run_file, MODEL_RUN_TIME, "Channel-Only andidate run object not found, skipping test")
+
+    # if candidate_run_file.is_file() is False:
+    #     pytest.skip('Candidate run object not found, skipping test')
+    # if candidate_channel_only_run_file.is_file() is False:
+    #     pytest.skip('candidate_channel_only run object not found, skipping test')
 
     # Load run objects
     candidate_run_expected = pickle.load(candidate_run_file.open("rb"))
@@ -277,8 +287,13 @@ def test_ncores_candidate_channel_only(
     candidate_channel_only_collected_file = \
         output_dir / 'channel_only_candidate_run' / 'WrfHydroSim_collected.pkl'
 
-    if candidate_channel_only_collected_file.is_file() is False:
-        pytest.skip('candidate_channel_only collected run object not found, skipping test.')
+    wait_on_file(candidate_channel_only_sim_file, MODEL_RUN_TIME,
+                 "Channel-Only Candidate sim object not found, skipping test")
+    wait_on_file(candidate_channel_only_collected_file, MODEL_RUN_TIME,
+                 "Channel-Only Candidate run object not found, skipping test")
+
+    # if candidate_channel_only_collected_file.is_file() is False:
+    #     pytest.skip('candidate_channel_only collected run object not found, skipping test.')
 
     print("\nQuestion: The candidate_channel-only output files from an ncores runmatch those "
           "from an ncores-1 run?\n", end='')
@@ -369,8 +384,13 @@ def test_perfrestart_candidate_channel_only(output_dir, xrcmp_n_cores):
     candidate_channel_only_collected_file = \
         output_dir / 'channel_only_candidate_run' / 'WrfHydroSim_collected.pkl'
 
-    if candidate_channel_only_collected_file.is_file() is False:
-        pytest.skip('candidate_channel_only run object not found, skipping test')
+    wait_on_file(candidate_channel_only_sim_file, MODEL_RUN_TIME,
+                 "Channel-Only Candidate sim object not found, skipping test")
+    wait_on_file(candidate_channel_only_collected_file, MODEL_RUN_TIME,
+                 "Channel-Only Candidate run object not found, skipping test")
+
+    # if candidate_channel_only_collected_file.is_file() is False:
+    #    pytest.skip('candidate_channel_only run object not found, skipping test')
 
     print("\nQuestion: The candidate_channel_only outputs from a restart run match the outputs "
           "from standard run?\n", end='')

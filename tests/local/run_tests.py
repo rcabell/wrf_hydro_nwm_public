@@ -66,7 +66,7 @@ def run_tests(
     html_report = 'wrfhydro_testing' + '-' + compiler + '-' + config + '.html'
     html_report = str(pathlib.Path(output_dir).joinpath(html_report))
 
-    pytest_cmd = "pytest -vv --tb=no --ignore=local -p no:cacheprovider "
+    pytest_cmd = "pytest -vv --tb=short --ignore=local -p no:cacheprovider "
 
     if pdb:
         if pdb_x:
@@ -98,6 +98,13 @@ def run_tests(
     pytest_cmd += " --exe_cmd=" + exe_cmd
     pytest_cmd += " --ncores=" + str(ncores)
     pytest_cmd += " --xrcmp_n_cores=" + str(xrcmp_n_cores)
+
+    # check for pytest-parallel
+    try:
+        import pytest_parallel
+        pytest_cmd += " --workers auto"
+    except (ModuleNotFoundError, ImportError):
+        pass
 
     if scheduler:
         pytest_cmd += " --scheduler "
