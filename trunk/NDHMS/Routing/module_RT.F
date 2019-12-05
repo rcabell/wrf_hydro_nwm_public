@@ -193,6 +193,8 @@ CONTAINS
      rt_domain(did)%q_sfcflx_x  = 0.0
      allocate( rt_domain(did)%q_sfcflx_y  (IXRT,JXRT) )
      rt_domain(did)%q_sfcflx_y  = 0.0
+     allocate( rt_domain(did)%qqsfc  (IXRT,JXRT) )
+     rt_domain(did)%qqsfc  = 0.0
      !allocate( rt_domain(did)%subsurface%grid_transform%smcmaxrt   	(IXRT,JXRT,NSOIL) )
      !rt_domain(did)%subsurface%grid_transform%smcmaxrt   	= 0.0
      !allocate( rt_domain(did)%subsurface%grid_transform%smcwltrt   	(IXRT,JXRT,NSOIL) )
@@ -259,6 +261,7 @@ CONTAINS
             rt_domain(did)%STC   = 282.0
   allocate( rt_domain(did)%SH2OX(IX,JX,NSOIL) )
             rt_domain(did)%SH2OX = rt_domain(did)%SMC
+  allocate( rt_domain(did)%SMCWLT1  (IX,JX) )
   allocate( rt_domain(did)%SMCWLT1  (IX,JX) )
             rt_domain(did)%SMCWLT1   = 0.0
   allocate( rt_domain(did)%SMCREF1  (IX,JX) )

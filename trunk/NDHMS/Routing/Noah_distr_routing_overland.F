@@ -18,7 +18,8 @@ subroutine OverlandRouting( &
     ixrt, &       ! routing grid x size
     jxrt, &      ! routing grid y size
     q_sfcflx_x, &! accumulated x flux
-    q_sfcflx_y  &! accumulated y flux
+    q_sfcflx_y,  &! accumulated y flux
+    qqsfc &
     )
 #ifdef MPP_LAND
     use module_mpp_land, only:  mpp_land_max_int1,  sum_real1, my_id, io_id, numprocs
@@ -31,6 +32,7 @@ subroutine OverlandRouting( &
     integer, INTENT(IN) :: ixrt, jxrt, rt_option
     !REAL, INTENT(out), DIMENSION(IXRT,JXRT)   :: SFCHEADSUBRT  ! moved into overland_data%control
     real, intent(inout) :: q_sfcflx_x,q_sfcflx_y
+    real, intent(out)   :: qqsfc
 
     ! REMOVED VARIABLES
     !INTEGER, INTENT(INOUT), DIMENSION(IXRT,JXRT) :: LAKE_MSKRT
@@ -210,7 +212,8 @@ subroutine ov_rtng( &
         JXRT, &
         rt_option, &
         q_sfcflx_x, &
-        q_sfcflx_y &
+        q_sfcflx_y, &
+        qqsfc &
         )
 
     !yyww
@@ -245,6 +248,7 @@ subroutine ov_rtng( &
     !REAL, INTENT(INOUT), DIMENSION(IXRT,JXRT) :: LAKE_INFLORT
     !REAL, INTENT(INOUT), DIMENSION(IXRT,JXRT) :: QBDRYRT
     REAL, INTENT(INOUT), DIMENSION(IXRT,JXRT) :: q_sfcflx_x,q_sfcflx_y
+    real, intent(out), dimension(ixrt, jxrt) :: qqsfc
     !REAL, INTENT(INOUT)     :: QSTRMVOLTRT,QBDRYTRT,LAKE_INFLOTRT
     !REAL, INTENT(IN), DIMENSION(IXRT,JXRT,8)  :: SO8RT
 
@@ -375,7 +379,7 @@ subroutine ov_rtng( &
         !DJG Debug...
 
 
-        if(rt_option .eq. 1) then
+        if(rt_option .eq. 1) then                                   ! Steepest Descent (D8)
             CALL ROUTE_OVERLAND1(DTRT_TER, &
                 ovrt_data%properties%distance_to_neighbor, &
                 ovrt_data%control%surface_water_head_routing, &
@@ -389,8 +393,8 @@ subroutine ov_rtng( &
                 ovrt_data%control%boundary_flux_total,    &
                 ovrt_data%properties%surface_slope, &
                 ovrt_data%properties%max_surface_slope_index, &
-                q_sfcflx_x, q_sfcflx_y)
-        else
+                q_sfcflx_x, q_sfcflx_y, qqsfc)
+        else                                                        ! CASC2D
             CALL ROUTE_OVERLAND2(DTRT_TER, &
                 ovrt_data%properties%distance_to_neighbor, &
                 ovrt_data%control%surface_water_head_routing, &
@@ -402,7 +406,7 @@ subroutine ov_rtng( &
                 IXRT, JXRT, &
                 ovrt_data%control%boundary_flux, &
                 ovrt_data%control%boundary_flux_total,  &
-                q_sfcflx_x,q_sfcflx_y)
+                q_sfcflx_x,q_sfcflx_y, qqsfc)
         end if
 
     END DO          ! END routing time steps
@@ -427,7 +431,7 @@ END SUBROUTINE OV_RTNG
 SUBROUTINE ROUTE_OVERLAND1(dt,                                &
         &          gsize,h,qsfc,sox,soy,                                   &
         &     retent_dep,dist_rough,XX,YY,QBDRY,QBDRYT,SO8RT,SO8RT_D,      &
-        &     q_sfcflx_x,q_sfcflx_y)
+        &     q_sfcflx_x,q_sfcflx_y, qqsfc)
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !
     !  Subroutine to route excess rainfall over the watershed
@@ -474,10 +478,12 @@ SUBROUTINE ROUTE_OVERLAND1(dt,                                &
     REAL*8, DIMENSION(XX,YY) :: QBDRY_tmp, DH
     REAL*8, DIMENSION(XX,YY) :: DH_tmp
 
-    !!! Declare Local Variables
+    real, intent(out), dimension(xx, yy) :: qqsfc
+
+!!! Declare Local Variables
 
     REAL :: dhdx,dhdy,alfax,alfay
-    REAL :: hh53,qqsfc,hh,dt_new,hmax
+    REAL :: hh53,hh,dt_new,hmax
     REAL :: sfx,sfy
     REAL :: tmp_adjust
 
@@ -499,18 +505,18 @@ SUBROUTINE ROUTE_OVERLAND1(dt,                                &
     !!! Loop to route water
     do j=2,YY-1
         do i=2,XX-1
-            if (h(I,J).GT.retent_dep(I,J)) then
+            if (h(I,J) > retent_dep(I,J)) then
                 IXX0 = SO8RT_D(i,j,1)
                 JYY0 = SO8RT_D(i,j,2)
                 index = SO8RT_D(i,j,3)
                 tmp_gsize = 1.0/gsize(i,j,index)
                 sfx = so8RT(i,j,index)-(h(IXX0,JYY0)-h(i,j))*0.001*tmp_gsize
                 hmax = h(i,j)*0.001  !Specify max head for mass flux limit...
-                if(sfx .lt. 1E-20) then
+                if (sfx < 1E-20) then
                     call GETMAX8DIR(IXX0,JYY0,I,J,H,RETENT_DEP,so8rt,gsize(i,j,:),sfx,XX,YY)
                 end if
                 if(IXX0 > 0) then  ! do the rest if the lowest grid can be found.
-                    if(sfx .lt. 1E-20) then
+                    if (sfx < 1E-20) then
 #ifdef HYDRO_D
                         print*, "Message: sfx reset to 1E-20. sfx =",sfx
                         print*, "i,j,index,IXX0,JYY0",i,j,index,IXX0,JYY0
@@ -524,27 +530,27 @@ SUBROUTINE ROUTE_OVERLAND1(dt,                                &
                     hh53=hh**(5./3.)
 
                     ! Calculate q-flux...
-                    qqsfc = alfax*hh53*dt * tmp_gsize
+                    qqsfc(i,j) = alfax*hh53*dt * tmp_gsize
 
                     !Courant check (simple mass limit on overland flow)...
-                    if (qqsfc.ge.(hmax*dt*tmp_gsize)) qqsfc = hmax*dt*tmp_gsize
+                    if (qqsfc(i,j) >= (hmax*dt*tmp_gsize)) qqsfc(i,j) = hmax*dt*tmp_gsize
 
                     ! Accumulate directional fluxes on routing subgrid...
-                    if (IXX0.gt.i) then
-                        q_sfcflx_x(I,J) = q_sfcflx_x(I,J) + qqsfc * &
+                    if (IXX0 > i) then
+                        q_sfcflx_x(I,J) = q_sfcflx_x(I,J) + qqsfc(i,j) * &
                             (1.0 - 0.5 * (ABS(j-JYY0)))
-                    else if (IXX0.lt.i) then
+                    else if (IXX0 < i) then
                         q_sfcflx_x(I,J) = q_sfcflx_x(I,J) - 1.0 * &
-                            qqsfc * (1.0 - 0.5 * (ABS(j-JYY0)))
+                            qqsfc(i,j) * (1.0 - 0.5 * (ABS(j-JYY0)))
                     else
                         q_sfcflx_x(I,J) = q_sfcflx_x(I,J) + 0.
                     end if
-                    if (JYY0.gt.j) then
-                        q_sfcflx_y(I,J) = q_sfcflx_y(I,J) + qqsfc * &
+                    if (JYY0 > j) then
+                        q_sfcflx_y(I,J) = q_sfcflx_y(I,J) + qqsfc(i,j) * &
                             (1.0 - 0.5 * (ABS(i-IXX0)))
-                    elseif (JYY0.lt.j) then
+                    elseif (JYY0 < j) then
                         q_sfcflx_y(I,J) = q_sfcflx_y(I,J) - 1.0 * &
-                            qqsfc * (1.0 - 0.5 * (ABS(i-IXX0)))
+                            qqsfc(i,j) * (1.0 - 0.5 * (ABS(i-IXX0)))
                     else
                         q_sfcflx_y(I,J) = q_sfcflx_y(I,J) + 0.
                     end if
@@ -552,8 +558,8 @@ SUBROUTINE ROUTE_OVERLAND1(dt,                                &
                     !DJG put adjustment in for (h) due to qqsfc
 
                     !yw changed as following:
-                    tmp_adjust=qqsfc*1000
-                    if((h(i,j) - tmp_adjust) <0 )  then
+                    tmp_adjust=qqsfc(i,j)*1000
+                    if ((h(i,j) - tmp_adjust) <0 )  then
 #ifdef HYDRO_D
                         print*, "Error Warning: surface head is negative:  ",i,j,ixx0,jyy0, &
                             h(i,j) - tmp_adjust
@@ -567,18 +573,18 @@ SUBROUTINE ROUTE_OVERLAND1(dt,                                &
                     !DG Boundary adjustments here
                     !DG Constant Flux Condition
 #ifdef MPP_LAND
-                    if( ((ixx0.eq.XX).and.(right_id .lt. 0)) .or. &
-                            ((ixx0.eq.1) .and.(left_id  .lt. 0)) .or. &
-                            ((jyy0.eq.1) .and.(down_id  .lt. 0)) .or. &
-                            ((JYY0.eq.YY).and.(up_id    .lt. 0)) ) then
+                    if( ((ixx0 == XX).and.(right_id < 0)) .or. &
+                            ((ixx0 == 1)  .and.(left_id  < 0)) .or. &
+                            ((jyy0 == 1)  .and. (down_id < 0)) .or. &
+                            ((JYY0 == YY) .and. (up_id   < 0)) ) then
                         !QBDRY_tmp(IXX0,JYY0)=QBDRY_tmp(IXX0,JYY0) - qqsfc*1000.
 #else
-                        if ((ixx0.eq.XX).or.(ixx0.eq.1).or.(jyy0.eq.1)   &
-                                .or.(JYY0.eq.YY )) then
+                        if ((ixx0 == XX).or.(ixx0 == 1).or.(jyy0 == 1)   &
+                                .or.(JYY0 == YY )) then
                             !QBDRY(IXX0,JYY0)=QBDRY(IXX0,JYY0) - qqsfc*1000.
 #endif
-                            QBDRY_tmp(IXX0,JYY0)=QBDRY_tmp(IXX0,JYY0) - qqsfc*1000.
-                            QBDRYT=QBDRYT - qqsfc
+                            QBDRY_tmp(IXX0,JYY0)=QBDRY_tmp(IXX0,JYY0) - qqsfc(i,j)*1000.
+                            QBDRYT=QBDRYT - qqsfc(i,j)
                             DH_tmp(IXX0,JYY0)= DH_tmp(IXX0,JYY0)-tmp_adjust
                         end if
                     end if
@@ -615,7 +621,7 @@ end subroutine ROUTE_OVERLAND1
 SUBROUTINE ROUTE_OVERLAND2 (dt,                               &
         &          dist,h,qsfc,sox,soy,                                   &
         &          retent_dep,dist_rough,XX,YY,QBDRY,QBDRYT,               &
-        &          q_sfcflx_x,q_sfcflx_y)
+        &          q_sfcflx_x,q_sfcflx_y, qqsfc)
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !
@@ -661,10 +667,12 @@ SUBROUTINE ROUTE_OVERLAND2 (dt,                               &
     REAL, INTENT(INOUT) :: QBDRYT
     REAL  :: DH(XX,YY)
 
-    !!! Declare Local Variables
+    real, intent(out), dimension(xx, yy) :: qqsfc
+
+!!! Declare Local Variables
 
     REAL :: dhdx,dhdy,alfax,alfay
-    REAL :: hh53,qqsfc,hh,dt_new
+    REAL :: hh53,hh,dt_new
     REAL :: sfx,sfy
     REAL :: tmp_adjust
 
@@ -683,40 +691,40 @@ SUBROUTINE ROUTE_OVERLAND2 (dt,                               &
     do j=1,YY
         do i=1,XX
             ! check for boundary gridpoint?
-            if (i.eq.XX) GOTO 998
+            if (i == XX) GOTO 998
             gsize = dist(i,j,3)
 
             ! check for detention storage?
-            if (h(i,j).lt.retent_dep(i,j).AND.     &
-                h(i+1,j).lt.retent_dep(i+1,j)) GOTO 998
+            if (h(i,j) < retent_dep(i,j) .AND.     &
+                h(i+1,j) < retent_dep(i+1,j)) GOTO 998
 
             dhdx = (h(i+1,j)/1000. - h(i,j)/1000.) / gsize  ! gisze-(m),h-(mm)
 
             sfx = (sox(i,j)-dhdx+1E-30)
-            if (abs(sfx).lt.1E-20) sfx=1E-20
+            if (abs(sfx) < 1E-20) sfx=1E-20
             alfax = ((abs(sfx))**0.5)/dist_rough(i,j)
-            if (sfx.lt.0.) then
+            if (sfx < 0.) then
                 hh=(h(i+1,j)-retent_dep(i+1,j))/1000.
             else
                 hh=(h(i,j)-retent_dep(i,j))/1000.
             end if
 
-            if ((retent_dep(i,j).gt.0.).AND.(hh.le.0.)) GOTO 998
-            if (hh.lt.0.) then
+            if ((retent_dep(i,j) > 0.).AND.(hh <= 0.)) GOTO 998
+            if (hh < 0.) then
                 GOTO 998
             end if
 
             hh53=hh**(5./3.)
 
             ! Calculate q-flux... (units (m))
-            qqsfc = (sfx/abs(sfx))*alfax*hh53*dt/gsize
-            q_sfcflx_x(I,J) = q_sfcflx_x(I,J) + qqsfc
+            qqsfc(i,j) = (sfx/abs(sfx))*alfax*hh53*dt/gsize
+            q_sfcflx_x(I,J) = q_sfcflx_x(I,J) + qqsfc(i,j)
 
             !DJG put adjustment in for (h) due to qqsfc
 
             !yw changed as following:
-            tmp_adjust=qqsfc*1000
-            if(tmp_adjust .le. 0 ) GOTO 998
+            tmp_adjust=qqsfc(i,j)*1000
+            if(tmp_adjust <= 0 ) GOTO 998
             if((h(i,j) - tmp_adjust) <0 )  then
 #ifdef HYDRO_D
                 print*, "WARNING: surface head is negative:  ",i,j
@@ -738,22 +746,22 @@ SUBROUTINE ROUTE_OVERLAND2 (dt,                               &
             !DG Boundary adjustments here
             !DG Constant Flux Condition
 #ifdef MPP_LAND
-            if ((i.eq.1).AND.(sfx.lt.0).and. &
-                    (left_id .lt. 0) ) then
+            if ((i == 1).AND.(sfx < 0).and. &
+                    (left_id < 0) ) then
 #else
-                if ((i.eq.1).AND.(sfx.lt.0)) then
+                if ((i == 1).AND.(sfx < 0)) then
 #endif
-                    Dh(i,j) = Dh(i,j) + qqsfc*1000.
-                    QBDRY(I,J)=QBDRY(I,J) + qqsfc*1000.
-                    QBDRYT=QBDRYT + qqsfc*1000.
+                    Dh(i,j) = Dh(i,j) + qqsfc(i,j)*1000.
+                    QBDRY(I,J)=QBDRY(I,J) + qqsfc(i,j)*1000.
+                    QBDRYT=QBDRYT + qqsfc(i,j)*1000.
 #ifdef MPP_LAND
-                else if ( (i.eq.(XX-1)).AND.(sfx.gt.0) &
-                        .and. (right_id .lt. 0) ) then
+                else if ( (i == (XX-1)) .AND. (sfx > 0) &
+                        .and. (right_id < 0) ) then
 #else
-                else if ((i.eq.(XX-1)).AND.(sfx.gt.0)) then
+                else if ((i == (XX-1)) .AND. (sfx > 0)) then
 #endif
-                    tmp_adjust = qqsfc*1000.
-                    if(h(i+1,j).lt.tmp_adjust) tmp_adjust = h(i+1,j)
+                    tmp_adjust = qqsfc(i,j)*1000.
+                    if (h(i+1,j) < tmp_adjust) tmp_adjust = h(i+1,j)
                     Dh(i+1,j) = Dh(i+1,j) - tmp_adjust
                     !DJG Re-assign h(i+1) = 0.0 when <0.0 (from rounding/truncation error)
                     QBDRY(I+1,J)=QBDRY(I+1,J) - tmp_adjust
@@ -780,27 +788,27 @@ SUBROUTINE ROUTE_OVERLAND2 (dt,                               &
         do i=1,XX
 
             !! check for boundary grid point?
-            if (j.eq.YY) GOTO 999
+            if (j == YY) GOTO 999
             gsize = dist(i,j,1)
 
 
             !! check for detention storage?
-            if (h(i,j).lt.retent_dep(i,j).AND.     &
-                h(i,j+1).lt.retent_dep(i,j+1)) GOTO 999
+            if (h(i,j) < retent_dep(i,j).AND.     &
+                h(i,j+1) < retent_dep(i,j+1)) GOTO 999
 
             dhdy = (h(i,j+1)/1000. - h(i,j)/1000.) / gsize
 
             sfy = (soy(i,j)-dhdy+1E-30)
-            if (abs(sfy).lt.1E-20) sfy=1E-20
+            if (abs(sfy) < 1E-20) sfy=1E-20
             alfay = ((abs(sfy))**0.5)/dist_rough(i,j)
-            if (sfy.lt.0.) then
+            if (sfy < 0.) then
                 hh=(h(i,j+1)-retent_dep(i,j+1))/1000.
             else
                 hh=(h(i,j)-retent_dep(i,j))/1000.
             end if
 
-            if ((retent_dep(i,j).gt.0.).AND.(hh.le.0.)) GOTO 999
-            if (hh.lt.0.) then
+            if ((retent_dep(i,j) > 0.) .AND. (hh <= 0.)) GOTO 999
+            if (hh < 0.) then
                 GOTO 999
             end if
 
@@ -808,17 +816,17 @@ SUBROUTINE ROUTE_OVERLAND2 (dt,                               &
 
             ! Calculate q-flux...
             qqsfc = (sfy/abs(sfy))*alfay*hh53*dt / gsize
-            q_sfcflx_y(I,J) = q_sfcflx_y(I,J) + qqsfc
+            q_sfcflx_y(I,J) = q_sfcflx_y(I,J) + qqsfc(i,j)
 
 
             !DJG put adjustment in for (h) due to qqsfc
             !yw	  h(i,j) = h(i,j)-qqsfc*1000.
             !yw          h(i,j+1) = h(i,j+1) + qqsfc*1000.
             !yw changed as following:
-            tmp_adjust=qqsfc*1000
-            if(tmp_adjust .le. 0 ) GOTO 999
+            tmp_adjust=qqsfc(i,j)*1000
+            if (tmp_adjust <= 0 ) GOTO 999
 
-            if((h(i,j) - tmp_adjust) <0 )  then
+            if ((h(i,j) - tmp_adjust) < 0 )  then
 #ifdef HYDRO_D
                 print *, "WARNING: surface head is negative:  ",i,j
 #endif
@@ -839,22 +847,22 @@ SUBROUTINE ROUTE_OVERLAND2 (dt,                               &
             !!DG Boundary adjustments here
             !!DG Constant Flux Condition
 #ifdef MPP_LAND
-            if ((j.eq.1).AND.(sfy.lt.0)   &
-                    .and. (down_id .lt. 0) ) then
+            if ((j == 1) .AND. (sfy < 0)   &
+                    .and. (down_id < 0) ) then
 #else
-                if ((j.eq.1).AND.(sfy.lt.0)) then
+                if ((j == 1) .AND. (sfy < 0)) then
 #endif
-                    Dh(i,j) = Dh(i,j) + qqsfc*1000.
-                    QBDRY(I,J)=QBDRY(I,J) + qqsfc*1000.
-                    QBDRYT=QBDRYT + qqsfc*1000.
+                    Dh(i,j) = Dh(i,j) + qqsfc(i,j)*1000.
+                    QBDRY(I,J)=QBDRY(I,J) + qqsfc(i,j)*1000.
+                    QBDRYT=QBDRYT + qqsfc(i,j)*1000.
 #ifdef MPP_LAND
-                else if ((j.eq.(YY-1)).AND.(sfy.gt.0) &
-                        .and. (up_id .lt. 0) ) then
+                else if ((j == (YY-1)) .AND. (sfy > 0) &
+                        .and. (up_id < 0) ) then
 #else
-                else if ((j.eq.(YY-1)).AND.(sfy.gt.0)) then
+                else if ((j == (YY-1)).AND.(sfy > 0)) then
 #endif
-                    tmp_adjust = qqsfc*1000.
-                    if(h(i,j+1).lt.tmp_adjust) tmp_adjust = h(i,j+1)
+                    tmp_adjust = qqsfc(i,j)*1000.
+                    if (h(i,j+1) < tmp_adjust) tmp_adjust = h(i,j+1)
                     Dh(i,j+1) = Dh(i,j+1) - tmp_adjust
                     !DJG Re-assign h(j+1) = 0.0 when <0.0 (from rounding/truncation error)
                     QBDRY(I,J+1)=QBDRY(I,J+1) - tmp_adjust
