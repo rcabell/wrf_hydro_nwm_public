@@ -127,7 +127,8 @@ subroutine OverlandRouting( &
             JXRT,                 &
             rt_option,            &
             q_sfcflx_x,           &
-            q_sfcflx_y)
+            q_sfcflx_y,           &
+            qqsfc)
     else
         ovrt_data%control%surface_water_head_routing = ovrt_data%control%infiltration_excess
 #ifdef HYDRO_D
