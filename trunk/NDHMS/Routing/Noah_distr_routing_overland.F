@@ -531,10 +531,12 @@ SUBROUTINE ROUTE_OVERLAND1(dt,                                &
                     hh53=hh**(5./3.)
 
                     ! Calculate q-flux...
-                    qqsfc(i,j) = alfax*hh53*dt * tmp_gsize
-
-                    !Courant check (simple mass limit on overland flow)...
-                    if (qqsfc(i,j) >= (hmax*dt*tmp_gsize)) qqsfc(i,j) = hmax*dt*tmp_gsize
+                    if (qqsfc(i,j) >= (hmax*dt*tmp_gsize)) then
+                        ! Courant check (simple mass limit on overland flow)...
+                        qqsfc(i,j) = qqsfc(i,j) + (hmax*dt * tmp_gsize)
+                    else
+                        qqsfc(i,j) = qqsfc(i,j) + (alfax*hh53*dt * tmp_gsize)
+                    end if
 
                     ! Accumulate directional fluxes on routing subgrid...
                     if (IXX0 > i) then
@@ -718,7 +720,7 @@ SUBROUTINE ROUTE_OVERLAND2 (dt,                               &
             hh53=hh**(5./3.)
 
             ! Calculate q-flux... (units (m))
-            qqsfc(i,j) = (sfx/abs(sfx))*alfax*hh53*dt/gsize
+            qqsfc(i,j) = qqsfc(i,j) + ( (sfx/abs(sfx))*alfax*hh53*dt/gsize )
             q_sfcflx_x(I,J) = q_sfcflx_x(I,J) + qqsfc(i,j)
 
             !DJG put adjustment in for (h) due to qqsfc
@@ -816,7 +818,7 @@ SUBROUTINE ROUTE_OVERLAND2 (dt,                               &
             hh53=hh**(5./3.)
 
             ! Calculate q-flux...
-            qqsfc = (sfy/abs(sfy))*alfay*hh53*dt / gsize
+            qqsfc(i,j) = qqsfc(i,j) + ((sfy/abs(sfy))*alfay*hh53*dt / gsize)
             q_sfcflx_y(I,J) = q_sfcflx_y(I,J) + qqsfc(i,j)
 
 

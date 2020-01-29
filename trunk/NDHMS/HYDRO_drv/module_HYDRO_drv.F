@@ -292,6 +292,7 @@ module module_HYDRO_drv
                     endif ! End check for io_form_outputs value
                 endif ! End check for rtout_factor
                 rtout_factor = rtout_factor + 1
+                rt_domain(did)%qqsfc = 0    ! reset the accumulated depth output
             endif
             !! JLM disable GW output for NWM. Bring this line back when runtime output options avail.
             !! JLM This seems like a more logical place?

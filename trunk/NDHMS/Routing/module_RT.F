@@ -262,7 +262,6 @@ CONTAINS
   allocate( rt_domain(did)%SH2OX(IX,JX,NSOIL) )
             rt_domain(did)%SH2OX = rt_domain(did)%SMC
   allocate( rt_domain(did)%SMCWLT1  (IX,JX) )
-  allocate( rt_domain(did)%SMCWLT1  (IX,JX) )
             rt_domain(did)%SMCWLT1   = 0.0
   allocate( rt_domain(did)%SMCREF1  (IX,JX) )
             rt_domain(did)%SMCREF1   = 0.0
