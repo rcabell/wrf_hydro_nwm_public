@@ -479,7 +479,7 @@ SUBROUTINE ROUTE_OVERLAND1(dt,                                &
     REAL*8, DIMENSION(XX,YY) :: QBDRY_tmp, DH
     REAL*8, DIMENSION(XX,YY) :: DH_tmp
 
-    real, intent(inout), dimension(xx, yy) :: qqsfc_acc
+    real(kind=8), intent(inout), dimension(xx, yy) :: qqsfc_acc
 
 !!! Declare Local Variables
 
@@ -591,7 +591,7 @@ SUBROUTINE ROUTE_OVERLAND1(dt,                                &
                         end if
                     end if
 
-                    qqsfc_acc(i, j) = qqsfc_acc(i, j)  + qqsfc
+                    qqsfc_acc(i, j) = qqsfc_acc(i, j) + qqsfc
                     !! End loop to route sfc water
                 end if
         end do
@@ -602,7 +602,6 @@ SUBROUTINE ROUTE_OVERLAND1(dt,                                &
     call MPP_LAND_COM_REAL8(DH_tmp,XX,YY,1)
     call MPP_LAND_COM_REAL8(QBDRY_tmp,XX,YY,1)
 
-    call MPP_LAND_COM_REAL(qqsfc_acc, xx, yy, 1)
 #endif
     QBDRY = QBDRY + QBDRY_tmp
     DH = DH+DH_tmp
@@ -888,7 +887,6 @@ SUBROUTINE ROUTE_OVERLAND2 (dt,                               &
 #ifdef MPP_LAND
     call MPP_LAND_UB_COM(H,XX,YY,99)
     call MPP_LAND_UB_COM(QBDRY,XX,YY,99)
-    call MPP_LAND_COM_REAL(qqsfc_acc, xx, yy, 99)
 #endif
     return
 

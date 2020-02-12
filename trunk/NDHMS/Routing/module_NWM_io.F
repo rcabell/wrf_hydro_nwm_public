@@ -2255,6 +2255,9 @@ subroutine output_rt_NWM(domainId,iGrid)
             call nwmCheck(diagFlag,iret,'ERROR: Unable to place data into output variable: '//trim(fileMeta%varNames(iTmp2)))
          endif
 
+         call mpp_land_sync()
+         rt_domain(domainId)%qqsfc = 0
+
          ! Deallocate memory for this variable.
          deallocate(globalOutComp)
          deallocate(localCompTmp)

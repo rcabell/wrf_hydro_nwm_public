@@ -292,7 +292,6 @@ module module_HYDRO_drv
                     endif ! End check for io_form_outputs value
                 endif ! End check for rtout_factor
                 rtout_factor = rtout_factor + 1
-                rt_domain(did)%qqsfc = 0    ! reset the accumulated depth output
             endif
             !! JLM disable GW output for NWM. Bring this line back when runtime output options avail.
             !! JLM This seems like a more logical place?
@@ -761,7 +760,7 @@ end if
 
 
 
-           !! Under channel-only, these variables are not allocated
+        !! Under channel-only, these variables are not allocated
            if(allocated(RT_DOMAIN(did)%SOLDRAIN)) RT_DOMAIN(did)%SOLDRAIN = 0
            if(allocated(rt_domain(did)%subsurface%state%qsubrt))   RT_DOMAIN(did)%subsurface%state%qsubrt   = 0
 
