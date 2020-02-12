@@ -2255,9 +2255,6 @@ subroutine output_rt_NWM(domainId,iGrid)
             call nwmCheck(diagFlag,iret,'ERROR: Unable to place data into output variable: '//trim(fileMeta%varNames(iTmp2)))
          endif
 
-         call mpp_land_sync()
-         rt_domain(domainId)%qqsfc = 0
-
          ! Deallocate memory for this variable.
          deallocate(globalOutComp)
          deallocate(localCompTmp)
@@ -2272,6 +2269,8 @@ subroutine output_rt_NWM(domainId,iGrid)
       call nwmCheck(diagFlag,iret,'ERROR: Unable to close RT_DOMAIN file.')
    endif
 
+   ! clear the qqsfc accumulator after output
+   rt_domain(domainId)%qqsfc(:,:) = 0.0
 
 end subroutine output_rt_NWM
 

@@ -479,7 +479,7 @@ SUBROUTINE ROUTE_OVERLAND1(dt,                                &
     REAL*8, DIMENSION(XX,YY) :: QBDRY_tmp, DH
     REAL*8, DIMENSION(XX,YY) :: DH_tmp
 
-    real(kind=8), intent(inout), dimension(xx, yy) :: qqsfc_acc
+    real, intent(inout), dimension(xx, yy) :: qqsfc_acc
 
 !!! Declare Local Variables
 
@@ -591,7 +591,10 @@ SUBROUTINE ROUTE_OVERLAND1(dt,                                &
                         end if
                     end if
 
-                    qqsfc_acc(i, j) = qqsfc_acc(i, j) + qqsfc
+                     ! round to nearest 0.1 mm to avoid numerical instabilities with
+                     ! different domain decompositions due to various node/MPI layouts
+                    qqsfc_acc(i, j) = qqsfc_acc(i, j) + (aint(qqsfc * 10000) / 10000)
+
                     !! End loop to route sfc water
                 end if
         end do

@@ -765,7 +765,6 @@ end if
            if(allocated(rt_domain(did)%subsurface%state%qsubrt))   RT_DOMAIN(did)%subsurface%state%qsubrt   = 0
 
 
-
       end subroutine HYDRO_exe
 
 

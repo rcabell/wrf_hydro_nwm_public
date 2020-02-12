@@ -66,7 +66,7 @@
   !REAL,    allocatable, DIMENSION(:,:)      :: SOLDEPRT ! QSUBRT, QSUBBDRYRT moved to subsurface io module, SOLDEPRT, ZWATTABLRT move to susurface properties
   REAL,    allocatable, DIMENSION(:,:)      :: SUB_RESID
   REAL,    allocatable, DIMENSION(:,:)      :: q_sfcflx_x,q_sfcflx_y
-  real(kind=8), allocatable, dimension(:,:) :: qqsfc
+  real,    allocatable, dimension(:,:)      :: qqsfc
   INTEGER,    allocatable, DIMENSION(:)      :: map_l2g, map_g2l
 
   INTEGER :: nToInd
