@@ -612,6 +612,7 @@ SUBROUTINE ROUTE_OVERLAND1(dt,                                &
 #ifdef MPP_LAND
     call MPP_LAND_COM_REAL8(DH,XX,YY,99)
     call MPP_LAND_COM_REAL(QBDRY,XX,YY,99)
+    call mpp_land_com_real(qqsfc_acc, xx, yy, 99)
 #endif
 
     H = H + DH
