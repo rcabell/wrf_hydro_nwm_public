@@ -760,10 +760,9 @@ end if
 
 
 
-           !! Under channel-only, these variables are not allocated
+        !! Under channel-only, these variables are not allocated
            if(allocated(RT_DOMAIN(did)%SOLDRAIN)) RT_DOMAIN(did)%SOLDRAIN = 0
            if(allocated(rt_domain(did)%subsurface%state%qsubrt))   RT_DOMAIN(did)%subsurface%state%qsubrt   = 0
-
 
 
       end subroutine HYDRO_exe
