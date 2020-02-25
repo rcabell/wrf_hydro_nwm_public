@@ -1289,7 +1289,7 @@ subroutine SubsurfaceRouting_drv(did)
             rt_domain(did)%subsurface_static, &
             rt_domain(did)%subsurface_input, &
             rt_domain(did)%subsurface_output, &
-            rt_domain(did)%overland%control%infiltration_excess)
+            rt_domain(did)%qqsub_acc)
     endif
 
 end subroutine SubsurfaceRouting_drv
@@ -1323,7 +1323,7 @@ subroutine OverlandRouting_drv(did)
             rt_domain(did)%jxrt, &
             rt_domain(did)%q_sfcflx_x, &
             rt_domain(did)%q_sfcflx_y, &
-            rt_domain(did)%qqsfc &
+            rt_domain(did)%qqsfc_acc &
             )
         ! ADCHANGE: If overland routing is called, INFXSUBRT is moved to SFCHEADSUBRT, so
         !           zeroing out just in case

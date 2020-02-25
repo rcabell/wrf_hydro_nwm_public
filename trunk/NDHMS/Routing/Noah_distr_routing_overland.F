@@ -19,7 +19,7 @@ subroutine OverlandRouting( &
     jxrt, &      ! routing grid y size
     q_sfcflx_x, &! accumulated x flux
     q_sfcflx_y,  &! accumulated y flux
-    qqsfc &
+    qqsfc_acc &
     )
 #ifdef MPP_LAND
     use module_mpp_land, only:  mpp_land_max_int1,  sum_real1, my_id, io_id, numprocs
@@ -32,7 +32,7 @@ subroutine OverlandRouting( &
     integer, INTENT(IN) :: ixrt, jxrt, rt_option
     !REAL, INTENT(out), DIMENSION(IXRT,JXRT)   :: SFCHEADSUBRT  ! moved into overland_data%control
     real, intent(inout) :: q_sfcflx_x,q_sfcflx_y
-    real, intent(out)   :: qqsfc
+    real, intent(inout)   :: qqsfc_acc
 
     ! REMOVED VARIABLES
     !INTEGER, INTENT(INOUT), DIMENSION(IXRT,JXRT) :: LAKE_MSKRT
@@ -128,7 +128,7 @@ subroutine OverlandRouting( &
             rt_option,            &
             q_sfcflx_x,           &
             q_sfcflx_y,           &
-            qqsfc)
+            qqsfc_acc)
     else
         ovrt_data%control%surface_water_head_routing = ovrt_data%control%infiltration_excess
 #ifdef HYDRO_D
@@ -214,7 +214,7 @@ subroutine ov_rtng( &
         rt_option, &
         q_sfcflx_x, &
         q_sfcflx_y, &
-        qqsfc &
+        qqsfc_acc &
         )
 
     !yyww
@@ -249,7 +249,7 @@ subroutine ov_rtng( &
     !REAL, INTENT(INOUT), DIMENSION(IXRT,JXRT) :: LAKE_INFLORT
     !REAL, INTENT(INOUT), DIMENSION(IXRT,JXRT) :: QBDRYRT
     REAL, INTENT(INOUT), DIMENSION(IXRT,JXRT) :: q_sfcflx_x,q_sfcflx_y
-    real, intent(out), dimension(ixrt, jxrt) :: qqsfc
+    real, intent(inout), dimension(ixrt, jxrt) :: qqsfc_acc
     !REAL, INTENT(INOUT)     :: QSTRMVOLTRT,QBDRYTRT,LAKE_INFLOTRT
     !REAL, INTENT(IN), DIMENSION(IXRT,JXRT,8)  :: SO8RT
 
@@ -394,7 +394,7 @@ subroutine ov_rtng( &
                 ovrt_data%control%boundary_flux_total,    &
                 ovrt_data%properties%surface_slope, &
                 ovrt_data%properties%max_surface_slope_index, &
-                q_sfcflx_x, q_sfcflx_y, qqsfc)
+                q_sfcflx_x, q_sfcflx_y, qqsfc_acc)
         else                                                        ! CASC2D
             CALL ROUTE_OVERLAND2(DTRT_TER, &
                 ovrt_data%properties%distance_to_neighbor, &
@@ -407,7 +407,7 @@ subroutine ov_rtng( &
                 IXRT, JXRT, &
                 ovrt_data%control%boundary_flux, &
                 ovrt_data%control%boundary_flux_total,  &
-                q_sfcflx_x,q_sfcflx_y, qqsfc)
+                q_sfcflx_x,q_sfcflx_y, qqsfc_acc)
         end if
 
     END DO          ! END routing time steps
@@ -503,6 +503,7 @@ SUBROUTINE ROUTE_OVERLAND1(dt,                                &
     DH=0.
     DH_tmp=0.
     QBDRY_tmp =0.
+    qqsfc = 0.0
 
     !!! Loop to route water
     do j=2,YY-1
@@ -585,7 +586,7 @@ SUBROUTINE ROUTE_OVERLAND1(dt,                                &
                                 .or. (JYY0 == YY )) then
                             !QBDRY(IXX0,JYY0)=QBDRY(IXX0,JYY0) - qqsfc*1000.
 #endif
-                            QBDRY_tmp(IXX0,JYY0) = QBDRY_tmp(IXX0,JYY0) - qqsfc*1000.
+                            QBDRY_tmp(IXX0,JYY0) = QBDRY_tmp(IXX0,JYY0) - qqsfc*1000.0
                             QBDRYT = QBDRYT - qqsfc
                             DH_tmp(IXX0,JYY0) = DH_tmp(IXX0,JYY0)-tmp_adjust
                         end if
@@ -593,7 +594,8 @@ SUBROUTINE ROUTE_OVERLAND1(dt,                                &
 
                      ! round to nearest 0.1 mm to avoid numerical instabilities with
                      ! different domain decompositions due to various node/MPI layouts
-                    qqsfc_acc(i, j) = qqsfc_acc(i, j) + (aint(qqsfc * 10000) / 10000)
+                    !qqsfc_acc(i, j) = qqsfc_acc(i, j) + (aint(qqsfc * 10000) / 10000)
+                     qqsfc_acc(i, j) = qqsfc_acc(i, j) + (qqsfc * 1000.0) ! mm
 
                     !! End loop to route sfc water
                 end if
