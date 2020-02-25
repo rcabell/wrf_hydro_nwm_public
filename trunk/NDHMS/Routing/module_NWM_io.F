@@ -1800,25 +1800,25 @@ subroutine output_rt_NWM(domainId,iGrid)
 
    if(nlst(domainId)%io_config_outputs .eq. 0) then
       ! All
-      fileMeta%outFlag(:) = [1,1,1,1,1,1]
+      fileMeta%outFlag(:) = [1,1,1,1,1,1,1]
    else if(nlst(domainId)%io_config_outputs .eq. 1) then
       ! Analysis and Assimilation
-      fileMeta%outFlag(:) = [1,1,0,0,0,0]
+      fileMeta%outFlag(:) = [1,1,0,0,0,0,0]
    else if(nlst(domainId)%io_config_outputs .eq. 2) then
       ! Short Range
-      fileMeta%outFlag(:) = [1,1,0,0,0,0]
+      fileMeta%outFlag(:) = [1,1,0,0,0,0,0]
    else if(nlst(domainId)%io_config_outputs .eq. 3) then
       ! Medium Range
-      fileMeta%outFlag(:) = [1,1,0,0,0,0]
+      fileMeta%outFlag(:) = [1,1,0,0,0,0,0]
    else if(nlst(domainId)%io_config_outputs .eq. 4) then
       ! Long Range
-      fileMeta%outFlag(:) = [1,1,0,0,0,0]
+      fileMeta%outFlag(:) = [1,1,0,0,0,0,0]
    else if(nlst(domainId)%io_config_outputs .eq. 5) then
       ! Retrospective
-      fileMeta%outFlag(:) = [1,1,0,0,0,0]
+      fileMeta%outFlag(:) = [1,1,0,0,0,0,0]
    else if(nlst(domainId)%io_config_outputs .eq. 6) then
       ! Diagnostics
-      fileMeta%outFlag(:) = [1,1,0,0,0,0]
+      fileMeta%outFlag(:) = [1,1,0,0,0,0,0]
    else
       call nwmCheck(diagFlag,1,'ERROR: Invalid IOC flag provided by namelist file.')
    endif
@@ -2181,7 +2181,9 @@ subroutine output_rt_NWM(domainId,iGrid)
                   else if(iTmp2 .eq. 5) then
                      varRealTmp = rt_domain(domainId)%subsurface%grid_transform%smcrt(iTmp,jTmp,zTmp)
                   else if(iTmp2 .eq. 6) then
-                     varRealTmp = rt_domain(domainId)%qqsfc(iTmp,jTmp)
+                     varRealTmp = rt_domain(domainId)%qqsfc_acc(iTmp,jTmp)
+                  else if(iTmp2 .eq. 7) then
+                     varRealTmp = rt_domain(domainId)%qqsub_acc(iTmp,jTmp)
                   endif
 
                   ! Run a quick gross check on values to ensure they aren't outside our
@@ -2265,8 +2267,9 @@ subroutine output_rt_NWM(domainId,iGrid)
       call nwmCheck(diagFlag,iret,'ERROR: Unable to close RT_DOMAIN file.')
    endif
 
-   ! clear the qqsfc accumulator after output
-   rt_domain(domainId)%qqsfc(:,:) = 0.0
+   ! clear the qq accumulators after output
+   rt_domain(domainId)%qqsfc_acc(:,:) = 0.0
+   rt_domain(domainId)%qqsub_acc(:,:) = 0.0
 
 end subroutine output_rt_NWM
 

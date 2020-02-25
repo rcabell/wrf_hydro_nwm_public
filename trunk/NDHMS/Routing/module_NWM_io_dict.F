@@ -20,7 +20,7 @@ implicit none
 ! Declare parameter values for module.
 integer, parameter :: numChVars = 10
 integer, parameter :: numLdasVars = 98
-integer, parameter :: numRtDomainVars = 6
+integer, parameter :: numRtDomainVars = 7
 integer, parameter :: numLakeVars = 2
 integer, parameter :: numChGrdVars = 1
 integer, parameter :: numLsmVars = 14
@@ -1630,21 +1630,22 @@ subroutine initRtDomainDict(rtDomainDict,procId,diagFlag)
    endif
 
    rtDomainDict%varNames(:) = [character(len=64) :: "zwattablrt", "sfcheadsubrt", "QSTRMVOLRT", &
-                               "QBDRYRT", "SOIL_M", "qqsfc" ]   !, &
+                               "QBDRYRT", "SOIL_M", "qqsfc_acc", "qqsub_acc" ]   !, &
                               !"q_sfcflx_x", "q_sfcflx_y"]
    rtDomainDict%longName(:) = [character(len=64) :: "water table depth","surface head",&
                                "channel inflow",&
                                "accumulated value of the boundary flux, + into domain - out of domain",&
-                               "volumetric soil moisture", "accumulated depth of overland water leaving cell"]
-   rtDomainDict%units(:) = [character(len=64) :: "m","mm","mm","mm","m3 m-3", "m"]
-   rtDomainDict%scaleFactor(:) = [0.1,1.0,1.0,1.0,0.01,0.1]
-   rtDomainDict%addOffset(:) = [0.0,0.0,0.0,0.0,0.0,0.0]
-   rtDomainDict%outFlag(:) = [0,0,0,0,0,0]
-   rtDomainDict%timeZeroFlag(:) = [1,1,1,1,1,1]
-   rtDomainDict%missingReal(:) = [-9999.0,-9999.0,-9999.0,-9999.0,-9999.0,-9999.0]
-   rtDomainDict%fillReal(:) = [-9999.0,-9999.0,-9999.0,-9999.0,-9999.0,-9999.0]
-   rtDomainDict%validMinDbl(:) = [0.0d0, 0.0d0, 0.0d0, -1000000.0d0, 0.0d0, 0.0d0]
-   rtDomainDict%validMaxDbl(:) = [100.0d0, 1000000.0d0, 1000000.0d0, 1000000.0d0, 100.0d0, 100d0]
+                               "volumetric soil moisture", "accumulated depth of overland water leaving cell", &
+                               "accumulated depth of subsurface water leaving cell"]
+   rtDomainDict%units(:) = [character(len=64) :: "m","mm","mm","mm","m3 m-3", "mm", "mm"]
+   rtDomainDict%scaleFactor(:) = [0.1,1.0,1.0,1.0,0.01,0.001,0.001]
+   rtDomainDict%addOffset(:) = [0.0,0.0,0.0,0.0,0.0,0.0,0.0]
+   rtDomainDict%outFlag(:) = [0,0,0,0,0,0,0]
+   rtDomainDict%timeZeroFlag(:) = [1,1,1,1,1,1,1]
+   rtDomainDict%missingReal(:) = [-9999.0,-9999.0,-9999.0,-9999.0,-9999.0,-9999.0,-9999.0]
+   rtDomainDict%fillReal(:) = [-9999.0,-9999.0,-9999.0,-9999.0,-9999.0,-9999.0,-9999.0]
+   rtDomainDict%validMinDbl(:) = [0.0d0, 0.0d0, 0.0d0, -1000000.0d0, 0.0d0, 0.0d0, -1000000.0d0]
+   rtDomainDict%validMaxDbl(:) = [100.0d0, 1000000.0d0, 1000000.0d0, 1000000.0d0, 100.0d0, 1000000d0, 1000000.0d0]
 
    ! Loop through and calculate missing/fill/min/max values that will be placed
    ! into the NetCDF attributes after scale_factor/add_offset are applied.

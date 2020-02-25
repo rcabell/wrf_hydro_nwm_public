@@ -1,4 +1,4 @@
-subroutine subsurfaceRouting ( subrt_data, subrt_static, subrt_input, subrt_output)
+subroutine subsurfaceRouting ( subrt_data, subrt_static, subrt_input, subrt_output, qqsub_acc)
 #ifdef MPP_LAND
     use module_mpp_land, only:  mpp_land_com_real, mpp_land_com_integer
     use module_subsurface_data
@@ -28,6 +28,7 @@ subroutine subsurfaceRouting ( subrt_data, subrt_static, subrt_input, subrt_outp
     !REAL, DIMENSION(IXRT,JXRT)   :: ZWATTABLRT
     REAL, DIMENSION(subrt_static%ixrt,subrt_static%jxrt)   :: CWATAVAIL
     INTEGER, DIMENSION(subrt_static%ixrt,subrt_static%jxrt) :: SATLYRCHK
+    real, intent(inout)   :: qqsub_acc
 
     CWATAVAIL = 0.
     CALL FINDZWAT(subrt_static%ixrt,subrt_static%jxrt,subrt_static%NSOIL, &
@@ -55,7 +56,7 @@ subroutine subsurfaceRouting ( subrt_data, subrt_static, subrt_input, subrt_outp
     ! This subroutine returns: ZWATTABLRT, CWATAVAIL and SATLYRCHK
 
 
-    CALL SUBSFC_RTNG( subrt_data, subrt_static, subrt_input, subrt_output, CWATAVAIL, SATLYRCHK)
+    CALL SUBSFC_RTNG( subrt_data, subrt_static, subrt_input, subrt_output, CWATAVAIL, SATLYRCHK, qqsub_acc)
 
 #ifdef HYDRO_D
     print *, "SUBROUTE routing called and returned..."
@@ -67,7 +68,8 @@ end subroutine subsurfaceRouting
 !DJG   SUBROUTINE SUBSFC_RTNG
 !DJG ------------------------------------------------
 
-SUBROUTINE SUBSFC_RTNG(subrt_data, subrt_static, subrt_input, subrt_output, CWATAVAIL, SATLYRCHK)
+SUBROUTINE SUBSFC_RTNG(subrt_data, subrt_static, subrt_input, subrt_output, &
+                       CWATAVAIL, SATLYRCHK, qqsub_acc)
 
     !       use module_mpp_land, only: write_restart_rt_3, write_restart_rt_2, &
         !            my_id
@@ -100,7 +102,7 @@ SUBROUTINE SUBSFC_RTNG(subrt_data, subrt_static, subrt_input, subrt_output, CWAT
     !REAL, INTENT(IN), DIMENSION(IXRT,JXRT)   :: ZWATTABLRT
     REAL, INTENT(IN), DIMENSION(subrt_static%ixrt,subrt_static%jxrt)   :: CWATAVAIL
     INTEGER, INTENT(IN), DIMENSION(subrt_static%ixrt,subrt_static%jxrt) :: SATLYRCHK
-
+    real, intent(inout), dimension(subrt_static%ixrt,subrt_static%jxrt)   :: qqsub_acc
 
     !REAL, INTENT(OUT), DIMENSION(IXRT,JXRT)   :: QSUBRT
     !REAL, INTENT(OUT), DIMENSION(IXRT,JXRT)   :: QSUBBDRYRT
@@ -162,6 +164,8 @@ SUBROUTINE SUBSFC_RTNG(subrt_data, subrt_static, subrt_input, subrt_output, CWAT
     !DJG    - SUBSURFACE ROUITNG ONLY PERFORMED ON SATURATED LAYERS
     !DJG -----------------------------------------------------------------
 
+SUBDT = subrt_static%dt                !-- initialize the routing timestep to DT
+
 #ifdef HYDRO_D
     ! ADCHANGE: START Initial water balance variables
     ! ALL VARS in MM
@@ -204,8 +208,6 @@ SUBROUTINE SUBSFC_RTNG(subrt_data, subrt_static, subrt_input, subrt_output, CWAT
 
     !DJG Set up mass balance checks...
     !         CWATAVAIL = 0.            !-- initialize subsurface watavail
-    SUBDT = subrt_static%dt                !-- initialize the routing timestep to DT
-
 
     !!!! Find saturated layer depth...
     ! Loop through domain to determine sat. layers and assign wat tbl depth...
@@ -247,7 +249,7 @@ SUBROUTINE SUBSFC_RTNG(subrt_data, subrt_static, subrt_input, subrt_output, CWAT
                            subrt_data%properties%max_surface_slope_index, &
                            CWATAVAIL, SUBDT, &
                            subrt_data%state%qsubbdryrt, subrt_data%state%qsubbdrytrt, &
-                           subrt_data%state%qsubrt)
+                           subrt_data%state%qsubrt, qqsub_acc)
     !     else
     !        CALL ROUTE_SUBSURFACE2(subrt_data%properties%distance_to_neighbor,subrt_data%properties%zwattablrt, &
         !               subrt_data%state%qsubrt, subrt_data%properties%surface_slope_x, subrt_data%properties%surface_slope_y, &
@@ -562,7 +564,7 @@ END SUBROUTINE FINDZWAT
 !===================================================================================================
 SUBROUTINE ROUTE_SUBSURFACE1(dist, z, latksat, soldep, &
                              XX, YY, SO8RT, SO8RT_D, &
-                             CWATAVAIL, SUBDT, QSUBDRY, QSUBDRYT, qsub)
+                             CWATAVAIL, SUBDT, QSUBDRY, QSUBDRYT, qsub, qqsub_acc)
 #ifdef MPP_LAND
    use module_mpp_land, only: left_id, down_id, right_id, up_id, &
                               mpp_land_com_real8, my_id, mpp_land_com_real
@@ -587,6 +589,7 @@ SUBROUTINE ROUTE_SUBSURFACE1(dist, z, latksat, soldep, &
    real, intent(inout)                     :: QSUBDRYT
                                               ! total subsurface flow outside of domain (m3/s)
    real, intent(out), dimension(XX,YY)     :: qsub ! subsurface flow outside of cell (m3/s)
+   real, intent(inout), dimension(XX,YY)     :: qqsub_acc ! accumulated subsurface flow outside of cell (mm)
 
    ! Local variables
    integer :: i, j ! indices for local loops
@@ -703,6 +706,9 @@ SUBROUTINE ROUTE_SUBSURFACE1(dist, z, latksat, soldep, &
                   QSUBDRYT = QSUBDRYT + qqsub
                endif
 
+               ! Update accumulator term, converted to positive depth in mm
+               qqsub_acc(i,j) = qqsub_acc(i,j) + ( (0.0-qqsub) / dist(i,j,9) * SUBDT * 1000.0 )
+
             endif  ! end if for flux calc
 
          endif   ! end if for gridcell check
@@ -725,6 +731,7 @@ SUBROUTINE ROUTE_SUBSURFACE1(dist, z, latksat, soldep, &
 #ifdef MPP_LAND
    call MPP_LAND_COM_REAL(qsub,XX,YY,99)
    call MPP_LAND_COM_REAL(QSUBDRY,XX,YY,99)
+   call MPP_LAND_COM_REAL(qqsub_acc,XX,YY,99)
 #endif
 
    return
