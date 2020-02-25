@@ -589,11 +589,9 @@ SUBROUTINE ROUTE_OVERLAND1(dt,                                &
                             QBDRYT = QBDRYT - qqsfc
                             DH_tmp(IXX0,JYY0) = DH_tmp(IXX0,JYY0)-tmp_adjust
                         end if
-                    end if
 
-                     ! round to nearest 0.1 mm to avoid numerical instabilities with
-                     ! different domain decompositions due to various node/MPI layouts
-                    qqsfc_acc(i, j) = qqsfc_acc(i, j) + (aint(qqsfc * 10000) / 10000)
+                    qqsfc_acc(i, j) = qqsfc_acc(i, j) + qqsfc
+                end if
 
                     !! End loop to route sfc water
                 end if
