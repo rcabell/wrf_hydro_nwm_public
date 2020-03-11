@@ -591,16 +591,11 @@ SUBROUTINE ROUTE_OVERLAND1(dt,                                &
     ! use double precision to solve the underflow problem.
     call MPP_LAND_COM_REAL8(DH_tmp,XX,YY,1)
     call MPP_LAND_COM_REAL8(QBDRY_tmp,XX,YY,1)
-#endif
-    QBDRY = QBDRY + QBDRY_tmp
-    DH = DH+DH_tmp
-
-#ifdef MPP_LAND
     call MPP_LAND_COM_REAL8(DH,XX,YY,99)
     call MPP_LAND_COM_REAL(QBDRY,XX,YY,99)
 #endif
-
-    H = H + DH
+    QBDRY = QBDRY + QBDRY_tmp
+    H = H + DH + DH_tmp
 
     return
 

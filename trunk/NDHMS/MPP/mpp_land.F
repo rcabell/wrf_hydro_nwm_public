@@ -235,15 +235,16 @@ MODULE MODULE_MPP_LAND
         end  subroutine MPP_LAND_PAR_INI
 
   subroutine MPP_LAND_LR_COM(in_out_data,NX,NY,flag)
+
 !   ### Communicate message on left right direction.
     integer NX,NY
     real in_out_data(nx,ny),data_r(2,ny)
     integer count,size,tag,  ierr
     integer flag   ! 99 replace the boundary, else get the sum.
 
-    if(flag .eq. 99) then ! replace the data  
+    if(flag .eq. 99) then ! replace the data
        if(right_id .ge. 0) then  !   ### send to right first.
-           tag = 11 
+           tag = 11
            size = ny
            call mpi_send(in_out_data(nx-1,:),size,MPI_REAL,   &
              right_id,tag,HYDRO_COMM_WORLD,ierr)
@@ -253,17 +254,17 @@ MODULE MODULE_MPP_LAND
            size = ny
            call mpi_recv(in_out_data(1,:),size,MPI_REAL,  &
               left_id,tag,HYDRO_COMM_WORLD,mpp_status,ierr)
-       endif 
+       endif
 
       if(left_id .ge. 0 ) then !   ### send to left second.
-          size = ny 
+          size = ny
           tag = 21
           call mpi_send(in_out_data(2,:),size,MPI_REAL,   &
              left_id,tag,HYDRO_COMM_WORLD,ierr)
       endif
       if(right_id .ge. 0) then !   receive from  right
           tag = 21
-          size = ny 
+          size = ny
           call mpi_recv(in_out_data(nx,:),size,MPI_REAL,&
              right_id,tag,HYDRO_COMM_WORLD, mpp_status,ierr)
       endif
@@ -272,7 +273,7 @@ MODULE MODULE_MPP_LAND
 
        if(right_id .ge. 0) then !   ### send to right first.
          tag = 11
-         size = 2*ny 
+         size = 2*ny
          call mpi_send(in_out_data(nx-1:nx,:),size,MPI_REAL,   &
              right_id,tag,HYDRO_COMM_WORLD,ierr)
        end if
@@ -283,7 +284,7 @@ MODULE MODULE_MPP_LAND
                HYDRO_COMM_WORLD,mpp_status,ierr)
           in_out_data(1,:) = in_out_data(1,:) + data_r(1,:)
           in_out_data(2,:) = in_out_data(2,:) + data_r(2,:)
-       endif 
+       endif
 
       if(left_id .ge. 0 ) then !   ### send to left second.
           size = 2*ny
@@ -304,10 +305,16 @@ MODULE MODULE_MPP_LAND
 
   subroutine MPP_LAND_LR_COM8(in_out_data,NX,NY,flag)
 !   ### Communicate message on left right direction.
-    integer NX,NY
-    real*8 in_out_data(nx,ny),data_r(2,ny)
+    integer, intent(in)         :: NX,NY
+    real(kind=8), intent(inout) :: in_out_data(nx,ny)
+    integer, intent(in)         ::  flag   ! 99 replace the boundary, else get the sum.
+
+    integer :: req_count(2)
+    integer reqs(2,4)
+    integer stats(MPI_STATUS_SIZE,4)
+
+    real(kind=8) data_r(2,ny), data_l(2,ny)
     integer count,size,tag,  ierr
-    integer flag   ! 99 replace the boundary, else get the sum.
 
     if(flag .eq. 99) then ! replace the data  
        if(right_id .ge. 0) then  !   ### send to right first.
@@ -338,34 +345,52 @@ MODULE MODULE_MPP_LAND
 
     else   ! get the sum
 
-       if(right_id .ge. 0) then !   ### send to right first.
-         tag = 11
-         size = 2*ny 
-         call mpi_send(in_out_data(nx-1:nx,:),size,MPI_DOUBLE_PRECISION,   &
-             right_id,tag,HYDRO_COMM_WORLD,ierr)
-       end if
-       if(left_id .ge. 0) then !   receive from left
-          tag = 11
-          size = 2*ny
-          call mpi_recv(data_r,size,MPI_DOUBLE_PRECISION,left_id,tag, &
-               HYDRO_COMM_WORLD,mpp_status,ierr)
-          in_out_data(1,:) = in_out_data(1,:) + data_r(1,:)
-          in_out_data(2,:) = in_out_data(2,:) + data_r(2,:)
-       endif 
+        reqs = 0
+        req_count = 0
+        stats = 0
 
-      if(left_id .ge. 0 ) then !   ### send to left second.
-          size = 2*ny
-          tag = 21
-          call mpi_send(in_out_data(1:2,:),size,MPI_DOUBLE_PRECISION,   &
-             left_id,tag,HYDRO_COMM_WORLD,ierr)
-      endif
-      if(right_id .ge. 0) then !   receive from  right
-          tag = 21
-          size = 2*ny
-          call mpi_recv(in_out_data(nx-1:nx,:),size,MPI_DOUBLE_PRECISION,&
-             right_id,tag,HYDRO_COMM_WORLD, mpp_status,ierr)
-      endif
-    endif   ! end if black for flag.
+        if(left_id >= 0) then !   receive from left
+            req_count(1) = req_count(1) + 1
+            tag = 11
+            size = 2*ny
+            call mpi_irecv(data_r, size, MPI_DOUBLE_PRECISION, left_id, tag, &
+                    HYDRO_COMM_WORLD, reqs(1, req_count(1)), ierr)
+        endif
+
+        if(right_id >= 0) then !   receive from  right
+            req_count(2) = req_count(2) + 1
+            tag = 21
+            size = 2*ny
+            call mpi_irecv(data_l, size, MPI_DOUBLE_PRECISION, &
+                    right_id, tag, HYDRO_COMM_WORLD, reqs(2, req_count(2)), ierr)
+        endif
+
+        if(left_id >= 0) then !   ### send to left second.
+            req_count(1) = req_count(1) + 1
+            size = 2 * ny
+            tag = 21
+            call mpi_isend(in_out_data(1:2, :), size, MPI_DOUBLE_PRECISION, &
+                    left_id, tag, HYDRO_COMM_WORLD, reqs(1, req_count(1)), ierr)
+        endif
+
+        if(right_id >= 0) then !   ### send to right first.
+            req_count(2) = req_count(2) + 1
+            tag = 11
+            size = 2 * ny
+            call mpi_isend(in_out_data(nx - 1:nx, :), size, MPI_DOUBLE_PRECISION, &
+                    right_id, tag, HYDRO_COMM_WORLD, reqs(2, req_count(2)), ierr)
+        end if
+
+        if (left_id >= 0) then
+            call mpi_waitall(req_count(1), reqs(1,1:req_count(1)), stats(:,1:req_count(1)), ierr)
+            in_out_data(1:2,:) = in_out_data(1:2,:) + data_r
+        end if
+
+        if (right_id >= 0) then
+            call mpi_waitall(req_count(2), reqs(2,1:req_count(2)), stats(:,1:req_count(2)), ierr)
+            in_out_data(nx-1:nx,:) = in_out_data(nx-1:nx,:) + data_l
+        end if
+    endif   ! end if replace/sum
 
     return
   end subroutine MPP_LAND_LR_COM8
