@@ -134,6 +134,8 @@ program reservoir_unit_tests
         integer :: timestep_count
         character*256 :: cwd_full
         integer :: dynamic_reservoir_type
+        real :: assimilated_value
+        character(len=256) :: assimilated_source_file
 
         prev_time_inflow = 0.0
         timestep_count = 0
@@ -175,7 +177,8 @@ program reservoir_unit_tests
 
             inflow = inflow_array(timestep_count)
             call persistence_levelpool_hybrid_reservoir_data%run(inflow, &
-            inflow, 0.0, water_elevation, outflow, 900.0, dynamic_reservoir_type)
+            inflow, 0.0, water_elevation, outflow, 900.0, dynamic_reservoir_type, &
+            assimilated_value, assimilated_source_file)
 
             prev_time_inflow = inflow
 
@@ -223,6 +226,8 @@ program reservoir_unit_tests
         integer :: timestep_count
         character*256 :: cwd_full
         integer :: dynamic_reservoir_type
+        real :: assimilated_value
+        character(len=256) :: assimilated_source_file
 
         prev_time_inflow = 0.0
         timestep_count = 0
@@ -261,7 +266,8 @@ program reservoir_unit_tests
 
             inflow = inflow_array(timestep_count)
             call persistence_levelpool_hybrid_reservoir_data%run(inflow, &
-            inflow, 0.0, water_elevation, outflow, 900.0, dynamic_reservoir_type)
+            inflow, 0.0, water_elevation, outflow, 900.0, dynamic_reservoir_type, &
+            assimilated_value, assimilated_source_file)
 
             prev_time_inflow = inflow
 
@@ -309,6 +315,8 @@ program reservoir_unit_tests
         integer :: timestep_count
         character*256 :: cwd_full
         integer :: dynamic_reservoir_type
+        real :: assimilated_value
+        character(len=256) :: assimilated_source_file
 
         prev_time_inflow = 0.0
         timestep_count = 0
@@ -348,7 +356,8 @@ program reservoir_unit_tests
 
             inflow = inflow_array(timestep_count)
             call persistence_levelpool_hybrid_reservoir_data%run(inflow, &
-            inflow, 0.0, water_elevation, outflow, 900.0, dynamic_reservoir_type)
+            inflow, 0.0, water_elevation, outflow, 900.0, dynamic_reservoir_type, &
+            assimilated_value, assimilated_source_file)
 
             prev_time_inflow = inflow
 
@@ -396,6 +405,8 @@ program reservoir_unit_tests
         integer :: timestep_count
         character*256 :: cwd_full
         integer :: dynamic_reservoir_type
+        real :: assimilated_value
+        character(len=256) :: assimilated_source_file
 
         prev_time_inflow = 0.0
         timestep_count = 0
@@ -434,7 +445,8 @@ program reservoir_unit_tests
 
             inflow = inflow_array(timestep_count)
             call persistence_levelpool_hybrid_reservoir_data%run(inflow, &
-            inflow, 0.0, water_elevation, outflow, 900.0, dynamic_reservoir_type)
+            inflow, 0.0, water_elevation, outflow, 900.0, dynamic_reservoir_type, &
+            assimilated_value, assimilated_source_file)
 
             prev_time_inflow = inflow
 
@@ -480,6 +492,8 @@ program reservoir_unit_tests
         real, dimension(108) :: inflow_array_overflow
         integer :: timestep_count
         integer :: dynamic_reservoir_type
+        real :: assimilated_value
+        character(len=256) :: assimilated_source_file
 
         rv = .false.
         prev_time_inflow = 0.0
@@ -521,7 +535,8 @@ program reservoir_unit_tests
 
         do timestep_count = 1, 108
             inflow = inflow_array_overflow(timestep_count)
-            call levelpool_reservoir_data%run(inflow, inflow, 0.0, water_elevation, outflow, 300.0, dynamic_reservoir_type)
+            call levelpool_reservoir_data%run(inflow, inflow, 0.0, water_elevation, outflow, 300.0, dynamic_reservoir_type, &
+            assimilated_value, assimilated_source_file)
 
             prev_time_inflow = inflow
 
@@ -640,6 +655,8 @@ program reservoir_unit_tests
         integer :: timestep_count
         character*256 :: cwd_full
         integer :: dynamic_reservoir_type
+        real :: assimilated_value
+        character(len=256) :: assimilated_source_file
 
         prev_time_inflow = 0.0
         timestep_count = 0
@@ -672,7 +689,8 @@ program reservoir_unit_tests
 
             inflow = inflow_array(timestep_count)
             call rfc_forecasts_reservoir_data%run(inflow, &
-            inflow, 0.0, water_elevation, outflow, 900.0, dynamic_reservoir_type)
+            inflow, 0.0, water_elevation, outflow, 900.0, dynamic_reservoir_type, &
+            assimilated_value, assimilated_source_file)
 
             prev_time_inflow = inflow
 
@@ -717,6 +735,8 @@ program reservoir_unit_tests
         integer :: timestep_count
         character*256 :: cwd_full
         integer :: dynamic_reservoir_type
+        real :: assimilated_value
+        character(len=256) :: assimilated_source_file
 
         prev_time_inflow = 0.0
         timestep_count = 0
@@ -748,7 +768,8 @@ program reservoir_unit_tests
 
             inflow = inflow_array(timestep_count)
             call rfc_forecasts_reservoir_data%run(inflow, &
-            inflow, 0.0, water_elevation, outflow, 3600.0, dynamic_reservoir_type)
+            inflow, 0.0, water_elevation, outflow, 3600.0, dynamic_reservoir_type, &
+            assimilated_value, assimilated_source_file)
 
             prev_time_inflow = inflow
 
@@ -790,6 +811,8 @@ program reservoir_unit_tests
         integer :: timestep_count
         character*256 :: cwd_full
         integer :: dynamic_reservoir_type
+        real :: assimilated_value
+        character(len=256) :: assimilated_source_file
 
         prev_time_inflow = 0.0
         timestep_count = 0
@@ -821,7 +844,8 @@ program reservoir_unit_tests
 
             inflow = inflow_array(timestep_count)
             call rfc_forecasts_reservoir_data%run(inflow, &
-            inflow, 0.0, water_elevation, outflow, 900.0, dynamic_reservoir_type)
+            inflow, 0.0, water_elevation, outflow, 900.0, dynamic_reservoir_type, &
+            assimilated_value, assimilated_source_file)
 
             prev_time_inflow = inflow
 
@@ -864,6 +888,8 @@ program reservoir_unit_tests
         integer :: timestep_count
         character*256 :: cwd_full
         integer :: dynamic_reservoir_type
+        real :: assimilated_value
+        character(len=256) :: assimilated_source_file
 
         prev_time_inflow = 0.0
         timestep_count = 0
@@ -895,7 +921,8 @@ program reservoir_unit_tests
 
             inflow = inflow_array(timestep_count)
             call rfc_forecasts_reservoir_data%run(inflow, &
-            inflow, 0.0, water_elevation, outflow, 900.0, dynamic_reservoir_type)
+            inflow, 0.0, water_elevation, outflow, 900.0, dynamic_reservoir_type, &
+            assimilated_value, assimilated_source_file)
 
             prev_time_inflow = inflow
 
@@ -939,6 +966,8 @@ program reservoir_unit_tests
         integer :: timestep_count
         character*256 :: cwd_full
         integer :: dynamic_reservoir_type
+        real :: assimilated_value
+        character(len=256) :: assimilated_source_file
 
         prev_time_inflow = 0.0
         timestep_count = 0
@@ -970,7 +999,8 @@ program reservoir_unit_tests
 
             inflow = inflow_array(timestep_count)
             call rfc_forecasts_reservoir_data%run(inflow, &
-            inflow, 0.0, water_elevation, outflow, 900.0, dynamic_reservoir_type)
+            inflow, 0.0, water_elevation, outflow, 900.0, dynamic_reservoir_type, &
+            assimilated_value, assimilated_source_file)
 
             prev_time_inflow = inflow
 
@@ -1015,6 +1045,8 @@ program reservoir_unit_tests
         integer :: timestep_count
         character*256 :: cwd_full
         integer :: dynamic_reservoir_type
+        real :: assimilated_value
+        character(len=256) :: assimilated_source_file
 
         prev_time_inflow = 0.0
         timestep_count = 0
@@ -1047,7 +1079,8 @@ program reservoir_unit_tests
 
             inflow = inflow_array(timestep_count)
             call rfc_forecasts_reservoir_data%run(inflow, &
-            inflow, 0.0, water_elevation, outflow, 3600.0, dynamic_reservoir_type)
+            inflow, 0.0, water_elevation, outflow, 3600.0, dynamic_reservoir_type, &
+            assimilated_value, assimilated_source_file)
 
             prev_time_inflow = inflow
 

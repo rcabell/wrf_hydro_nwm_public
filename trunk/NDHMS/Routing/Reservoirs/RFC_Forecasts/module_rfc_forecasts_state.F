@@ -14,16 +14,18 @@ module module_rfc_forecasts_state
     ! Extend/derive rfc forecasts state from the abstract base
     ! type for reservoir state.
     type, extends(reservoir_state) :: rfc_forecasts_state_interface
-        real                               :: water_elevation              ! meters AMSL
+        real                               :: water_elevation       ! meters AMSL
         real, allocatable, dimension(:)    :: discharges
         logical, allocatable, dimension(:) :: synthetic_values
-        integer                         :: time_series_update_time      ! seconds
-        integer                         :: current_time                 ! seconds
+        integer                         :: time_series_update_time  ! seconds
+        integer                         :: current_time             ! seconds
         integer                         :: time_series_index
         logical                         :: forecast_found
         logical                         :: all_discharges_synthetic
-        integer                         :: dynamic_reservoir_type       ! dynamic reservoir type sent to lake out files
-        integer                         :: levelpool_reservoir_type     ! reservoir type for levelpool
+        integer                         :: dynamic_reservoir_type    ! dynamic reservoir type sent to lake out files
+        integer                         :: levelpool_reservoir_type  ! reservoir type for levelpool
+        real                            :: levelpool_assimilated_value       ! levelpool assimilated sentinel value
+        character(len=256)              :: levelpool_assimilated_source_file ! none for levelpool assimilated source
 
         type (levelpool), pointer :: levelpool_ptr   ! pointer to levelpool object
 

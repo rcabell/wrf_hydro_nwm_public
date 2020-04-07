@@ -613,6 +613,14 @@ END SUBROUTINE SUBMUSKINGCUNGE
         real, DIMENSION(IXRT,JXRT)  :: tmp
         real, dimension(nlinks)     :: tmp2
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!TEMP
+        character(len=256)   :: temp_assimilated_source_file
+        real :: temp_assimilated_value
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+
 #ifdef MPP_LAND
         integer lake_index(nlakes)
         integer nlinks_index(nlinks)
@@ -1172,7 +1180,8 @@ gwOption:   if(gwBaseSwCRT == 3) then
               ! Inflow, lateral inflow, water elevation, and the routing period
               ! are passed in. Updated outflow and water elevation are returned.
               call rt_domain(did)%reservoirs(i)%ptr%run(QLAKEIP(i), QLAKEI(i), &
-                   QLLAKE(i), RESHT(i), QLAKEO(i), DTCT, rt_domain(did)%final_reservoir_type(i))
+                   QLLAKE(i), RESHT(i), QLAKEO(i), DTCT, rt_domain(did)%final_reservoir_type(i), &
+                   temp_assimilated_value, temp_assimilated_source_file)
 
               ! TODO: Encapsulate the lake state variable for water elevation (RESHT(i))
               !       inside the reservoir module, but it requires a redesign of the lake
@@ -1599,6 +1608,13 @@ end subroutine drive_CHANNEL
        real , intent(INOUT), dimension(:,:)  :: QLINK
        real , intent(INOUT), dimension(:)    :: HLINK
 
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!TEMP
+        character(len=256)   :: temp_assimilated_source_file
+        real :: temp_assimilated_value
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 #ifdef WRF_HYDRO_NUDGING
        !! inout for applying previous nudge to upstream components of flow at gages
        real, intent(inout),    dimension(:)    :: nudge
@@ -1898,7 +1914,8 @@ do nt = 1, nsteps
             ! Inflow, lateral inflow, water elevation, and the routing period
             ! are passed in. Updated outflow and water elevation are returned.
             call rt_domain(did)%reservoirs(lakeid)%ptr%run(Qup, Quc, 0.0, &
-                 RESHT(lakeid), tmpQLINK(k,2), DTRT_CH, rt_domain(did)%final_reservoir_type(lakeid))
+                 RESHT(lakeid), tmpQLINK(k,2), DTRT_CH, rt_domain(did)%final_reservoir_type(lakeid), &
+                 temp_assimilated_value, temp_assimilated_source_file)
 
             ! TODO: Encapsulate the lake state variable for water elevation (RESHT(lakeid))
             !       inside the reservoir module, but it requires a redesign of the lake
