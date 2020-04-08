@@ -198,12 +198,12 @@ contains
         ! it cannot change reservoir types
         dynamic_reservoir_type = 1
 
-        ! The assimilated value would always be a sentinel of -999.0 because level pool does
+        ! The assimilated value would always be a sentinel of -9999.0 because level pool does
         ! not assimilate any external observations or forecasts
-        assimilated_value = -999.0
+        assimilated_value = -9999.0
 
-        ! The assimilated source file would always be "None"
-        assimilated_source_file = "None"
+        ! The assimilated source file would always be an empty string
+        assimilated_source_file = ""
 
 #ifdef RESERVOIR_D
         ! Log diagnostic data only for development/debugging purposes

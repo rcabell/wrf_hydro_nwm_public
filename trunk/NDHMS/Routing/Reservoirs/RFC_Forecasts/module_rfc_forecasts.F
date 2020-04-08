@@ -351,6 +351,12 @@ contains
         ! Update the dynamic_reservoir_type returned from this subroutine
         dynamic_reservoir_type = this%state%dynamic_reservoir_type
 
+        ! Update the assimilated_value returned from this subroutine
+        assimilated_value = this%state%assimilated_value
+
+        ! Update the assimilated_value returned from this subroutine
+        assimilated_source_file = this%state%assimilated_source_file
+
 #ifdef RESERVOIR_D
         ! Log diagnostic data only for development/debugging purposes
         call log_rfc_forecasts_diagnostic_data(this%properties%lake_number, this%state%current_time, &

@@ -23,9 +23,11 @@ module module_rfc_forecasts_state
         logical                         :: forecast_found
         logical                         :: all_discharges_synthetic
         integer                         :: dynamic_reservoir_type    ! dynamic reservoir type sent to lake out files
-        integer                         :: levelpool_reservoir_type  ! reservoir type for levelpool
-        real                            :: levelpool_assimilated_value       ! levelpool assimilated sentinel value
-        character(len=256)              :: levelpool_assimilated_source_file ! none for levelpool assimilated source
+        real                            :: assimilated_value
+        character(len=256)              :: assimilated_source_file
+        integer                         :: levelpool_reservoir_type    ! reservoir type for levelpool
+        real                            :: levelpool_assimilated_value ! levelpool assimilated sentinel value
+        character(len=256)              :: levelpool_assimilated_source_file ! empty string for levelpool assimilated source
 
         type (levelpool), pointer :: levelpool_ptr   ! pointer to levelpool object
 
@@ -59,8 +61,20 @@ contains
         ! Initialize dynamic_reservoir_type to 4 for RFC type reservoir
         this%dynamic_reservoir_type = 4
 
+        ! Initialize to default sentinel, -9999.0
+        this%assimilated_value = -9999.0
+
+        ! Initialize to default empty string
+        this%assimilated_source_file = ""
+
         ! Levelpool reservoir type set to 1
         this%levelpool_reservoir_type = 1
+
+        ! Set to default sentinel, -999.0
+        this%levelpool_assimilated_value = -9999.0
+
+        ! Set to default string
+        this%levelpool_assimilated_source_file = ""
 
     end subroutine rfc_forecasts_state_init
 
