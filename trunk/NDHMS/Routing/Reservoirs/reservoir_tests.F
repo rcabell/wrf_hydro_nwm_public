@@ -188,7 +188,9 @@ program reservoir_unit_tests
         print *, 'dynamic_reservoir_type: ', dynamic_reservoir_type
 
         if (outflow .ge. 13.73367 - epsilon(13.73367) .and. outflow .le. 13.73367 + epsilon(13.73367) &
-        .and. dynamic_reservoir_type == 2 ) then
+        .and. dynamic_reservoir_type == 2 .and. assimilated_value .ge. 13.73367 - epsilon(13.73367) &
+        .and. assimilated_value .le. 13.73367 + epsilon(13.73367) .and. &
+        assimilated_source_file == "2010-10-01_06:00:00.15min.usgsTimeSlice.ncdf") then
             rv2 = .true.
             print *, "========================================================================"
             print *, 'Persistence Levelpool Hybrid Run USGS Reservoir Test Passed'
