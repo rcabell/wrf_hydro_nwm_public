@@ -391,6 +391,13 @@ contains
 
             ! Set dynamic_reservoir_type to levelpool type
             this%state%dynamic_reservoir_type = this%state%levelpool_reservoir_type
+
+            ! Set the assimilated_value to sentinel, -9999.0
+            this%state%assimilated_value = -9999.0
+
+            ! Set the assimilated_source_file to empty string
+            this%state%assimilated_source_file = ""
+
         end if
 
         ! Calculate change in storage
@@ -418,7 +425,7 @@ contains
         ! Update the assimilated_value returned from this subroutine
         assimilated_value = this%state%assimilated_value
 
-        ! Update the assimilated_value returned from this subroutine
+        ! Update the assimilated_source_file returned from this subroutine
         assimilated_source_file = this%state%assimilated_source_file
 
         ! Update the current time
