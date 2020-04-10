@@ -279,7 +279,9 @@ program reservoir_unit_tests
         print *, 'dynamic_reservoir_type: ', dynamic_reservoir_type
 
         if (outflow .ge. 16.0820713 - epsilon(16.0820713) .and. outflow .le. 16.0820713 + epsilon(16.0820713) &
-        .and. dynamic_reservoir_type == 3) then
+        .and. dynamic_reservoir_type == 3 .and. assimilated_value .ge. 16.082071 - epsilon(16.082071) &
+        .and. assimilated_value .le. 16.082071 + epsilon(16.082071) .and. &
+        assimilated_source_file == "2016-10-10_00:00:00.15min.usaceTimeSlice.ncdf") then
             rv2 = .true.
             print *, "========================================================================"
             print *, 'Persistence Levelpool Hybrid Run USACE Reservoir Test Passed'
@@ -369,7 +371,9 @@ program reservoir_unit_tests
         print *, 'dynamic_reservoir_type: ', dynamic_reservoir_type
 
         if (outflow .ge. 229.226059 - epsilon(229.226059) .and. outflow .le. 229.226059 + epsilon(229.226059) &
-        .and. dynamic_reservoir_type == 1) then
+        .and. dynamic_reservoir_type == 1 .and. assimilated_value .ge. -9999.0 - epsilon(-9999.0) &
+        .and. assimilated_value .le. -9999.0 + epsilon(-9999.0) .and. &
+        assimilated_source_file == "") then
             rv2 = .true.
             print *, "========================================================================"
             print *, 'Persistence Levelpool Hybrid Run USACE Reservoir Overflow Max Height Test Passed'
@@ -458,7 +462,9 @@ program reservoir_unit_tests
         print *, 'dynamic_reservoir_type: ', dynamic_reservoir_type
 
         if (outflow .ge. 1.81549609 - epsilon(1.81549609) .and. outflow .le. 1.81549609 + epsilon(1.81549609) &
-        .and. dynamic_reservoir_type == 1) then
+        .and. dynamic_reservoir_type == 1 .and. assimilated_value .ge. -9999.0 - epsilon(-9999.0) &
+        .and. assimilated_value .le. -9999.0 + epsilon(-9999.0) .and. &
+        assimilated_source_file == "") then
             rv2 = .true.
             print *, "========================================================================"
             print *, 'Persistence Levelpool Hybrid Run USACE Reservoir No Timeslice Available Test Passed'
@@ -548,7 +554,9 @@ program reservoir_unit_tests
         print *, 'dynamic_reservoir_type: ', dynamic_reservoir_type
 
         if (outflow .ge. 17.0451450 - epsilon(17.0451450) .and. outflow .le. 17.0451450 + epsilon(17.0451450) &
-        .and. dynamic_reservoir_type == 1) then
+        .and. dynamic_reservoir_type == 1 .and. assimilated_value .ge. -9999.0 - epsilon(-9999.0) &
+        .and. assimilated_value .le. -9999.0 + epsilon(-9999.0) .and. &
+        assimilated_source_file == "") then
             rv = .true.
             print *, "========================================================================"
             print *, 'Levelpool Overflow Max Height Test Passed'
@@ -702,7 +710,9 @@ program reservoir_unit_tests
         print *, 'dynamic_reservoir_type: ', dynamic_reservoir_type
 
         if (outflow .ge. 1.81549609 - epsilon(1.81549609) .and. outflow .le. 1.81549609 + epsilon(1.81549609) &
-        .and. dynamic_reservoir_type == 1) then
+        .and. dynamic_reservoir_type == 1 .and. assimilated_value .ge. -9999.0 - epsilon(-9999.0) &
+        .and. assimilated_value .le. -9999.0 + epsilon(-9999.0) .and. &
+        assimilated_source_file == "") then
             rv = .true.
             print *, "========================================================================"
             print *, 'RFC Forecasts Levelpool Fallback Test Passed'
@@ -780,7 +790,10 @@ program reservoir_unit_tests
 
         print *, 'dynamic_reservoir_type: ', dynamic_reservoir_type
 
-        if (outflow .ge. 3.6 - epsilon(3.6) .and. outflow .le. 3.6 + epsilon(3.6) .and. dynamic_reservoir_type == 4) then
+        if (outflow .ge. 3.6 - epsilon(3.6) .and. outflow .le. 3.6 + epsilon(3.6) .and. &
+        dynamic_reservoir_type == 4 .and. assimilated_value .ge. 3.6 - epsilon(3.6) &
+        .and. assimilated_value .le. 3.6 + epsilon(3.6) .and. &
+        assimilated_source_file == "2019-08-18_00.60min.CCHC1.RFCTimeSeries.ncdf") then
             rv = .true.
             print *, "========================================================================"
             print *, 'RFC Forecasts Time Series Output Test Passed'
@@ -857,7 +870,9 @@ program reservoir_unit_tests
         print *, 'dynamic_reservoir_type: ', dynamic_reservoir_type
 
         if (outflow .ge. 1.81549609 - epsilon(1.81549609) .and. outflow .le. 1.81549609 + epsilon(1.81549609) &
-        .and. dynamic_reservoir_type == 1) then
+        .and. dynamic_reservoir_type == 1 .and. assimilated_value .ge. -9999.0 - epsilon(-9999.0) &
+        .and. assimilated_value .le. -9999.0 + epsilon(-9999.0) .and. &
+        assimilated_source_file == "") then
             rv = .true.
             print *, "========================================================================"
             print *, 'RFC Forecasts Time Series Output Negative Data Test Passed'
@@ -934,7 +949,9 @@ program reservoir_unit_tests
         print *, 'dynamic_reservoir_type: ', dynamic_reservoir_type
 
         if (outflow .ge. 1.81549609 - epsilon(1.81549609) .and. outflow .le. 1.81549609 + epsilon(1.81549609) &
-        .and. dynamic_reservoir_type == 1) then
+        .and. dynamic_reservoir_type == 1 .and. assimilated_value .ge. -9999.0 - epsilon(-9999.0) &
+        .and. assimilated_value .le. -9999.0 + epsilon(-9999.0) .and. &
+        assimilated_source_file == "") then
             rv = .true.
             print *, "========================================================================"
             print *, 'RFC Forecasts Time Series Output All Synthetic Data Test Passed'
@@ -1012,7 +1029,9 @@ program reservoir_unit_tests
         print *, 'dynamic_reservoir_type: ', dynamic_reservoir_type
 
         if (outflow .ge. 1.81549609 - epsilon(1.81549609) .and. outflow .le. 1.81549609 + epsilon(1.81549609) &
-        .and. dynamic_reservoir_type == 1) then
+        .and. dynamic_reservoir_type == 1 .and. assimilated_value .ge. -9999.0 - epsilon(-9999.0) &
+        .and. assimilated_value .le. -9999.0 + epsilon(-9999.0) .and. &
+        assimilated_source_file == "") then
             rv = .true.
             print *, "========================================================================"
             print *, 'RFC Forecasts Time Series Output Data Exceeding Max Test Passed'
@@ -1091,7 +1110,10 @@ program reservoir_unit_tests
 
         print *, 'dynamic_reservoir_type: ', dynamic_reservoir_type
 
-        if (outflow .ge. 7.8 - epsilon(7.8) .and. outflow .le. 7.8 + epsilon(7.8) .and. dynamic_reservoir_type == 4) then
+        if (outflow .ge. 7.8 - epsilon(7.8) .and. outflow .le. 7.8 + epsilon(7.8) &
+        .and. dynamic_reservoir_type == 4 .and. assimilated_value .ge. 7.8 - epsilon(7.8) &
+        .and. assimilated_value .le. 7.8 + epsilon(7.8) .and. &
+        assimilated_source_file == "2019-12-19_05.60min.CCHC1.RFCTimeSeries.ncdf") then
             rv = .true.
             print *, "========================================================================"
             print *, 'RFC Forecasts Time Series Output For Extended AnA Test Passed'
