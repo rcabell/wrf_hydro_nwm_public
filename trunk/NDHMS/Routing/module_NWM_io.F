@@ -2881,13 +2881,13 @@ subroutine output_lakes_NWM(domainId,iGrid)
       iret = nf90_put_var(ftn,varId,g_lakeTypeOut)
       call nwmCheck(diagFlag,iret,'ERROR: Unable to place data into reservoir_type output variable.')
 
-      ! Place reservoir_assimilated_value(s) into the NetCDF file
+      ! Place reservoir_assimilated_value values into the NetCDF file
       iret = nf90_inq_varid(ftn,'reservoir_assimilated_value',varId)
       call nwmCheck(diagFlag,iret,'ERROR: Unable to locate reservoir_assimilated_value in NetCDF file.')
       iret = nf90_put_var(ftn,varId,g_lake_assimilated_valueOut)
       call nwmCheck(diagFlag,iret,'ERROR: Unable to place data into reservoir_assimilated_value output variable.')
 
-      ! Place reservoir_assimilated_source_file(s) into the NetCDF file
+      ! Place reservoir_assimilated_source_file values into the NetCDF file
       iret = nf90_inq_varid(ftn,'reservoir_assimilated_source_file',varId)
       call nwmCheck(diagFlag,iret,'ERROR: Unable to locate reservoir_assimilated_source_file in NetCDF file.')
       iret = nf90_put_var(ftn,varId,g_lake_assimilated_source_fileOut)

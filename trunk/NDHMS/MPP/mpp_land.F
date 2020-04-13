@@ -1949,7 +1949,8 @@ MODULE MODULE_MPP_LAND
                  call mpi_recv(nodelist,nlakes,MPI_INTEGER,i, &
                       tag,HYDRO_COMM_WORLD,mpp_status,ierr)
                    tag = 139
-                 call mpi_recv(recv(:),nlakes,MPI_CHARACTER,i,  &
+                 !call mpi_recv(recv(:),nlakes,MPI_CHARACTER,i,  &
+                 call mpi_recv(recv(:),65536,MPI_CHARACTER,i,  &
                    tag,HYDRO_COMM_WORLD,mpp_status,ierr)
 
                  do k = 1,nlakes
