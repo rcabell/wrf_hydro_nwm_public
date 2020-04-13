@@ -2316,6 +2316,8 @@ subroutine output_lakes_NWM(domainId,iGrid)
    integer :: coordVarId ! Variable to hold crs
    integer :: featureVarId ! feature_id NetCDF variable ID
    integer :: reservoirTypeVarId ! reservoir_type netCDF variable ID
+   integer :: reservoirAssimilatedValueVarId ! reservoir_assimilated_value netCDF variable ID
+   integer :: reservoirAssimilatedSourceFileVarId ! reservoir_assimilated_source_file netCDF variable ID
    integer :: latVarId, lonVarId ! lat/lon NetCDF variable ID values
    integer :: elevVarId ! elevation NetCDF variable ID
    integer :: varRange(2) ! Local storage of valid min/max values
@@ -2730,6 +2732,18 @@ subroutine output_lakes_NWM(domainId,iGrid)
       call nwmCheck(diagFlag, iret, 'ERROR: Unable to place flag_values attribute into reservoir_type variable')
       iret = nf90_put_att(ftn, reservoirTypeVarId, 'flag_meanings', trim(fileMeta%reservoirTypeFlagMeanings))
       call nwmCheck(diagFlag, iret, 'ERROR: Unable to place flag_meanings attribute into reservoir_type variable')
+
+      ! Create reservoir_assimilated_value variable
+      iret = nf90_def_var(ftn, "reservoir_assimilated_value", nf90_float, dimId(1), reservoirAssimilatedValueVarId)
+      call nwmCheck(diagFlag, iret, 'ERROR: Unable to create reservoir_assimilated_value variable.')
+      iret = nf90_put_att(ftn, reservoirAssimilatedValueVarId, 'long_name', trim(fileMeta%reservoirAssimilatedValueLName))
+      call nwmCheck(diagFlag, iret, 'ERROR: Unable to place long_name attribute into reservoir_assimilated_value variable')
+
+      ! Create reservoir_assimilated_source_file variable
+      iret = nf90_def_var(ftn, "reservoir_assimilated_source_file", nf90_char, dimId(1), reservoirAssimilatedSourceFileVarId)
+      call nwmCheck(diagFlag, iret, 'ERROR: Unable to create reservoir_assimilated_source_file variable.')
+      iret = nf90_put_att(ftn, reservoirAssimilatedSourceFileVarId, 'long_name', trim(fileMeta%reservoirAssimilatedSourceFileLName))
+      call nwmCheck(diagFlag, iret, 'ERROR: Unable to place long_name attribute into reservoir_assimilated_source_file variable')
 
       ! Create lake lat/lon variables
       iret = nf90_def_var(ftn,"latitude",nf90_float,dimId(1),latVarId)
