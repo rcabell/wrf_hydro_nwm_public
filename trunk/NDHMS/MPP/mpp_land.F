@@ -1937,8 +1937,10 @@ MODULE MODULE_MPP_LAND
         implicit none
         character(len=256) recv(nlakes), v(nlakes)
         integer nodelist(nlakes), nlakes, nodelist_in(nlakes)
-        integer i, ierr, tag, k
+        integer i, ierr, tag, k, in_len
         integer length, node
+
+        in_len = size(v, 1)*len(v)
 
         nodelist = nodelist_in
         if(my_id .eq. IO_id) then
@@ -1949,8 +1951,7 @@ MODULE MODULE_MPP_LAND
                  call mpi_recv(nodelist,nlakes,MPI_INTEGER,i, &
                       tag,HYDRO_COMM_WORLD,mpp_status,ierr)
                    tag = 139
-                 !call mpi_recv(recv(:),nlakes,MPI_CHARACTER,i,  &
-                 call mpi_recv(recv(:),65536,MPI_CHARACTER,i,  &
+                 call mpi_recv(recv(:),in_len,MPI_CHARACTER,i,  &
                    tag,HYDRO_COMM_WORLD,mpp_status,ierr)
 
                  do k = 1,nlakes
@@ -1966,7 +1967,7 @@ MODULE MODULE_MPP_LAND
            call mpi_send(nodelist,nlakes,MPI_INTEGER, IO_id,     &
                tag,HYDRO_COMM_WORLD,ierr)
            tag = 139
-           call mpi_send(v,nlakes,MPI_REAL,IO_id,   &
+           call mpi_send(v,in_len,MPI_CHARACTER,IO_id,   &
                tag,HYDRO_COMM_WORLD,ierr)
         end if
      end subroutine write_lake_char
@@ -2384,17 +2385,19 @@ MODULE MODULE_MPP_LAND
        character(len=256), dimension(nsize) :: in
        character(len=256), dimension(nsize) :: tmp
        character(len=256), dimension(:) :: in0
-       integer tag, i, status, ierr, k
+       integer tag, i, status, ierr, k, in_len
        if(nsize .le. 0) return
+
+       in_len = size(in, 1)*len(in)
 
        tag = 29
        if(my_id .ne. IO_id) then
-          call mpi_send(in,nsize,MPI_CHARACTER, IO_id,     &
+          call mpi_send(in,in_len,MPI_CHARACTER, IO_id,     &
                 tag,HYDRO_COMM_WORLD,ierr)
        else
           do i = 0, numprocs - 1
             if(i .ne. IO_id) then
-               call mpi_recv(tmp,nsize,&
+               call mpi_recv(tmp,in_len,&
                    MPI_CHARACTER,i,tag,HYDRO_COMM_WORLD,mpp_status,ierr)
                do k = 1, nsize
                   if(in0(k) .ne. tmp(k)) in(k) = tmp(k)
