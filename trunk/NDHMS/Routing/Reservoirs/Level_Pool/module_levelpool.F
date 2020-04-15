@@ -203,7 +203,7 @@ contains
         assimilated_value = -9999.0
 
         ! The assimilated source file would always be an empty string
-        assimilated_source_file = ""
+        assimilated_source_file = "Hi"
 
 #ifdef RESERVOIR_D
         ! Log diagnostic data only for development/debugging purposes

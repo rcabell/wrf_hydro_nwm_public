@@ -2309,7 +2309,7 @@ subroutine output_lakes_NWM(domainId,iGrid)
    integer :: ftn ! NetCDF file handle
    character(len=256) :: validTime ! Global attribute time string
    character(len=256) :: initTime ! Global attribute time string
-   integer :: dimId(3) ! Dimension ID values created during NetCDF created.
+   integer :: dimId(4) ! Dimension ID values created during NetCDF created.
    integer :: varId ! Variable ID value created as NetCDF variables are created and populated.
    integer :: timeId ! Dimension ID for the time dimension.
    integer :: refTimeId ! Dimension ID for the reference time dimension.
@@ -2617,6 +2617,10 @@ subroutine output_lakes_NWM(domainId,iGrid)
       varOutReal(1,:) = g_lakeInflowOut(:)
       varOutReal(2,:) = g_lakeOutflowOut(:)
 
+!      do iTmp=1,gSize
+!        g_lake_assimilated_source_fileOut(iTmp) = trim(ADJUSTL(g_lake_assimilated_source_file(iTmp)))
+!      end do
+
       ! Mask out missing values
       where ( varOutReal == fileMeta%modelNdv ) varOutReal = -9999.0
 
@@ -2658,6 +2662,8 @@ subroutine output_lakes_NWM(domainId,iGrid)
       call nwmCheck(diagFlag,iret,'ERROR: Unable to create time dimension')
       iret = nf90_def_dim(ftn,"reference_time",1,dimId(3))
       call nwmCheck(diagFlag,iret,'ERROR: Unable to create reference_time dimension')
+      iret = nf90_def_dim(ftn,"string_length",256,dimId(4))
+      call nwmCheck(diagFlag,iret,'ERROR: Unable to create string length dimension')
 
       ! Create and populate reference_time and time variables.
       iret = nf90_def_var(ftn,"time",nf90_int,dimId(2),timeId)
@@ -2740,7 +2746,7 @@ subroutine output_lakes_NWM(domainId,iGrid)
       call nwmCheck(diagFlag, iret, 'ERROR: Unable to place long_name attribute into reservoir_assimilated_value variable')
 
       ! Create reservoir_assimilated_source_file variable
-      iret = nf90_def_var(ftn, "reservoir_assimilated_source_file", nf90_char, dimId(1), reservoirAssimilatedSourceFileVarId)
+      iret = nf90_def_var(ftn, "reservoir_assimilated_source_file", nf90_char, [dimId(4), dimId(1)], reservoirAssimilatedSourceFileVarId)
       call nwmCheck(diagFlag, iret, 'ERROR: Unable to create reservoir_assimilated_source_file variable.')
       iret = nf90_put_att(ftn, reservoirAssimilatedSourceFileVarId, 'long_name', trim(fileMeta%reservoirAssimilatedSourceFileLName))
       call nwmCheck(diagFlag, iret, 'ERROR: Unable to place long_name attribute into reservoir_assimilated_source_file variable')
