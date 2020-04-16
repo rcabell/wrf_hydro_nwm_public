@@ -397,7 +397,7 @@ CONTAINS
          rt_domain(did)%reservoir_type = 1
          rt_domain(did)%final_reservoir_type = 1
          rt_domain(did)%reservoir_assimilated_value = -9999.0
-         rt_domain(did)%reservoir_assimilated_source_file = ""
+         rt_domain(did)%reservoir_assimilated_source_file = repeat(char(0), 256)
      endif
 
 
