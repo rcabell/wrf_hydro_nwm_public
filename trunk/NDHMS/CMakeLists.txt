@@ -10,7 +10,7 @@ if (NOT CMAKE_Fortran_COMPILER)
 	set (CMAKE_Fortran_COMPILER "mpif90")
 endif (NOT CMAKE_Fortran_COMPILER)
 
-project (WRF_Hydro)
+project (WRF_Hydro-Lakes-Dev)
 
 #set version numbers
 set (WRF_Hydro_VERSION_MAJOR 5)
