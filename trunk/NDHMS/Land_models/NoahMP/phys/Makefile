@@ -17,7 +17,7 @@ all:	$(OBJS)
 
 .F.o:
 	@echo ""
-	$(COMPILERF90) $(CPPINVOKE) $(CPPFLAGS) $(CPPHRLDAS) -o $(@) -c -I../Utility_routines $(F90FLAGS) $(LDFLAGS) $(FREESOURCE) $(*).F
+	$(COMPILERF90) $(CPPINVOKE) $(CPPFLAGS) $(CPPHRLDAS) $(MODFLAG) -o $(@) -c -I../Utility_routines $(F90FLAGS) $(LDFLAGS) $(FREESOURCE) $(*).F
 	@echo ""
 
 #
