@@ -1026,7 +1026,7 @@ contains
 
     noah_lsm%zlvl = zlvl
     noah_lsm%hrldas_setup_file = hrldas_setup_file
-    noah_lsm%mmf_runoff_file = " "!mmf_runoff_file
+    noah_lsm%mmf_runoff_file = mmf_runoff_file
     noah_lsm%external_veg_filename_template = " "!external_veg_filename_template
     noah_lsm%external_lai_filename_template = " "!external_lai_filename_template
     noah_lsm%xstart = 1!xstart
