@@ -256,27 +256,19 @@ CONTAINS
         REAL, PARAMETER :: PI = 3.14159265
         REAL, PARAMETER :: FANGLE = 0.22754493   ! = 0.5*sqrt(0.5*tan(pi/8))
 
-        ! halo'ed copies
-        integer, dimension(ims-1:ime+1, jms-1:jme+1) :: isltyp_h, landmask_h
-        real, dimension(ims-1:ime+1, jms-1:jme+1)    :: fdepth_h, wtd_h, topo_h, area_h, qlat_h
+        ! halo'ed arrays
+        integer, dimension(ims-1:ime+1, jms-1:jme+1) :: landmask_h
+        real, dimension(ims-1:ime+1, jms-1:jme+1)    ::  area_h, qlat_h
 
         ! create halo'ed local copies of tile vars
-        isltyp_h(ims:ime, jms:jme) = isltyp
         landmask_h(ims:ime, jms:jme) = landmask
-
-        fdepth_h(ims:ime, jms:jme) = fdepth
-        wtd_h(ims:ime, jms:jme) = wtd
-        topo_h(ims:ime, jms:jme) = topo
         area_h(ims:ime, jms:jme) = area
 
         nx = ((ime-ims) + 1) + 2      ! include halos
         ny = ((jme-jms) + 1) + 2      ! include halos
 
-        call mpp_land_com_integer(isltyp_h, nx, ny, 99)
+        ! copy neighbor's values for landmask and area
         call mpp_land_com_integer(landmask_h, nx, ny, 99)
-        call mpp_land_com_real(fdepth_h, nx, ny, 99)
-        call mpp_land_com_real(wtd_h, nx, ny, 99)
-        call mpp_land_com_real(topo_h, nx, ny, 99)
         call mpp_land_com_real(area_h, nx, ny, 99)
 
         itsh=max(its,1)
@@ -286,21 +278,22 @@ CONTAINS
 
         DO J = jtsh, jteh
             DO I = itsh, iteh
-                IF (fdepth_h(I, J).GT.0.) THEN
-                    KLAT = DKSAT_TABLE(isltyp_h(I, J)) * KLATFACTOR(isltyp_h(I, J))
-                    IF(wtd_h(I, J) < -1.5)THEN
-                        kcell(I, J) = fdepth_h(I, J) * KLAT * EXP((wtd_h(I, J) + 1.5) / fdepth_h(I, J))
+                IF (fdepth(I, J) > 0.) THEN
+                    KLAT = DKSAT_TABLE(isltyp(I, J)) * KLATFACTOR(isltyp(I, J))
+                    IF (wtd(I, J) < -1.5) THEN
+                        kcell(I, J) = fdepth(I, J) * KLAT * EXP((wtd(I, J) + 1.5) / fdepth(I, J))
                     ELSE
-                        kcell(I, J) = KLAT * (wtd_h(I, J) + 1.5 + fdepth_h(I, J))
+                        kcell(I, J) = KLAT * (wtd(I, J) + 1.5 + fdepth(I, J))
                     ENDIF
                 ELSE
                     kcell(i, J) = 0.
                 ENDIF
 
-                HEAD(I, J) = topo_h(I, J) + wtd_h(I, J)
+                HEAD(I, J) = topo(I, J) + wtd(I, J)
             ENDDO
         ENDDO
 
+        ! update neighbors with kcell/head calculation
         call mpp_land_com_real(KCELL, nx, ny, 99)
         call mpp_land_com_real(HEAD, nx, ny, 99)
 
@@ -313,7 +306,7 @@ CONTAINS
 
         DO J = jtsh, jteh
             DO I = itsh, iteh
-                IF (landmask_h(I, J).GT.0) THEN
+                IF (landmask_h(I, J) > 0) THEN
                     Q = 0.
 
                     Q = Q + (KCELL(I - 1, J + 1) + KCELL(I, J)) &
@@ -346,6 +339,7 @@ CONTAINS
             ENDDO
         ENDDO
 
+        ! merge (sum) of all neighbor's edge Q's
         call mpp_land_com_real(qlat_h, nx, ny, 1)
         qlat = qlat_h(ims:ime, jms:jme)
 
