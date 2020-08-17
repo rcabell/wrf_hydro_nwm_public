@@ -849,8 +849,6 @@ subroutine LandRT_ini(did)
                call reservoir%init(                               &
                      rt_domain(did)%RESHT(lake_index),            &
                      rt_domain(did)%HRZAREA(lake_index),          &
-                     rt_domain(did)%LAKE_PRECIP(lake_index),      &
-                     rt_domain(did)%LAKE_EVAP(lake_index),        &
                      rt_domain(did)%WEIRH(lake_index),            &
                      rt_domain(did)%WEIRC(lake_index),            &
                      rt_domain(did)%WEIRL(lake_index),            &
@@ -865,8 +863,6 @@ subroutine LandRT_ini(did)
               call reservoir%init(                                     &
                     rt_domain(did)%RESHT(lake_index),                  &
                     rt_domain(did)%HRZAREA(lake_index),                &
-                    rt_domain(did)%LAKE_PRECIP(lake_index),            &
-                    rt_domain(did)%LAKE_EVAP(lake_index),              &
                     rt_domain(did)%WEIRH(lake_index),                  &
                     rt_domain(did)%WEIRC(lake_index),                  &
                     rt_domain(did)%WEIRL(lake_index),                  &
@@ -889,8 +885,6 @@ subroutine LandRT_ini(did)
               call reservoir%init(                                      &
                     rt_domain(did)%RESHT(lake_index),                   &
                     rt_domain(did)%HRZAREA(lake_index),                 &
-                    rt_domain(did)%LAKE_PRECIP(lake_index),             &
-                    rt_domain(did)%LAKE_EVAP(lake_index),               &
                     rt_domain(did)%WEIRH(lake_index),                   &
                     rt_domain(did)%WEIRC(lake_index),                   &
                     rt_domain(did)%WEIRL(lake_index),                   &
