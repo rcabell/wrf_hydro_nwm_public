@@ -18,12 +18,17 @@ module module_NWM_io_dict
 implicit none
 
 ! Declare parameter values for module.
+<<<<<<< HEAD
 integer, parameter :: numChVars = 11
 integer, parameter :: numLdasVars = 116
 ! Note: if more ldas variables are added the logic will need to be changed in
 !       module_NWM_io.F:output_NoahMP_NWM for when to close the restart file
 integer, parameter :: numLdasVars_crocus_off = 98
 
+=======
+integer, parameter :: numChVars = 10
+integer, parameter :: numLdasVars = 103
+>>>>>>> 7247739e (new 2D (precip, evap,depth) and 3D (temperature and ice) vars (all lake related) are added to LDASOUT file)
 integer, parameter :: numRtDomainVars = 5
 integer, parameter :: numLakeVars = 4
 integer, parameter :: numChGrdVars = 1
@@ -1084,8 +1089,9 @@ subroutine initLdasDict(ldasOutDict,procId,diagFlag)
                                "PSNOWTEMP","PSNOWDZ","PSNOWHIST",&                       !108-110
                                "PSNOWLIQ","PSNOWHEAT","PSNOWRHO",&                       !111-113
                                "PSNOWSWE", "FLOW_ICE", "FLOW_SNOW"]                      !114-116
-
-  ldasOutDict%longName(:) = [character(len=128) :: &
+                               "LAKE_PRECIP2D","LAKE_EVAP2D","LAKE_DEPTH2D",&            !117-119
+                               "LAKE_T3D","LAKE_ICE3D"]                                  !120-121
+   ldasOutDict%longName(:) = [character(len=128) :: &
                               "Dominant vegetation category",&          !1
                               "Dominant soil category",&                !2
                               "Green Vegetation Fraction",&             !3
@@ -1202,7 +1208,11 @@ subroutine initLdasDict(ldasOutDict,procId,diagFlag)
                                "Snow water equivalent", &               !114
                                "Accumulated glacier melt from ice", &   !115
                                "Accumulated glacier melt from snow"]    !116
-
+                              "Rainfall rate on the lakes surface",&    !117
+                              "Evaporation rate from the lakes surface",&  !118
+                              "Lake Depth",&                               !119
+                              "Lake water temperature",&                   !120
+                              "Lake ice conditions"]                       !121
    ldasOutDict%units(:) = [character(len=64) :: &
                             "category","category","-","-","-", &               !1-5
                             "W m-2","-","W m-2","kg m-2 s-1","-", &            !6-10
@@ -1229,8 +1239,9 @@ subroutine initLdasDict(ldasOutDict,procId,diagFlag)
                             "m","-","days since snowfall",&                    !105-107
                             "K","m","-",&                                      !108-110
                             "kg/m3","J/m2","m",&                               !111-113
-                            "kg m-2","kg/m2","kg/m2"]                          !114-116
+                            "kg m-2","kg/m2","kg/m2"],&                        !114-116
 
+                            "mm","mm","m","K","-"]	                            !117-121
    ldasOutDict%scaleFactor(:) = [1.0, 1.0, 0.01, 0.1, 0.1, &                   !1-5
                                  0.1, 0.01, 0.1, 0.00001, 0.01, &              !6-10
                                  0.1, 0.1, 0.1, 0.1, 0.1, &                    !11-15
@@ -1256,8 +1267,9 @@ subroutine initLdasDict(ldasOutDict,procId,diagFlag)
                                  0.01,0.01,0.0001, &                           !105-107
                                  0.01,1.0,1.0, &                               !108-110
                                  0.0001,0.000001,0.001, &                      !111-113
-                                 0.000001, 0.01, 0.01 ]                        !114-116
-
+                                 0.000001, 0.01, 0.01, &                       !114-116
+                                 0.00001, 0.00001, 0.00001,&                   !117-119
+                                 0.00001,0.00001]      			                !120-121
    ldasOutDict%addOffset(:) = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0, & !1-10
                                0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0, & !11-20
                                0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0, & !21-30
@@ -1273,8 +1285,9 @@ subroutine initLdasDict(ldasOutDict,procId,diagFlag)
                                0.0,0.0,0.0, &                             !105-107
                                0.0,0.0,0.0, &                             !108-110
                                0.0,0.0,0.0, &                             !111-113
-                               0.0,0.0,0.0]                               !114-116
-
+                               0.0,0.0,0.0, &                             !114-116
+                               0.0,0.0,0.0, &                             !117-119
+                               0.0,0.0,0.0]                               !120-121
    ! Note that output flags will be set in the the output routine, and will vary
    ! by the IOC flag specified in hydro.namelist.
    ldasOutDict%outFlag(:) = [0,0,0,0,0,0,0,0,0,0, & !1-10
@@ -1292,8 +1305,9 @@ subroutine initLdasDict(ldasOutDict,procId,diagFlag)
                              0,0,0, &               !105-107
                              0,0,0, &               !108-110
                              0,0,0, &               !111-103
-                             0,0,0]                 !114-116
-
+                             0,0,0, &               !114-116
+                             0,0,0, &               !117-119
+                             0,0,]                  !120-121
    ldasOutDict%timeZeroFlag(:) = [1,1,1,1,1,1,1,1,1,1, & !1-10
                                   1,1,1,1,1,1,1,1,1,1, & !11-20
                                   1,1,1,1,1,1,1,1,1,1, & !21-30
@@ -1309,8 +1323,9 @@ subroutine initLdasDict(ldasOutDict,procId,diagFlag)
                                   1,1,1, &               !105-107
                                   1,1,1, &               !108-110
                                   1,1,1, &               !111-113
-                                  1,1,1]                 !114-116
-
+                                  1,1,1, &               !114-116
+                                  1,1,1, &               !117-119
+                                  1,1]                   !120-121
    ldasOutDict%numLev(:) = [1,1,1,1,1,1,1,1,1,1, &  !1-10
                             1,1,1,1,1,1,1,1,1,1, &  !11-20
                             1,1,1,1,1,1,1,1,1,1, &  !21-30
@@ -1326,9 +1341,9 @@ subroutine initLdasDict(ldasOutDict,procId,diagFlag)
                             40,40,40, &             !105-107
                             40,40,40, &             !108-110
                             40,40,40, &             !111-113
-                            40,1,1]                 !114-116
-   ldasOutDict%numLev(105:114) = ldasOutDict%act_lev ! Set crocus levels to number from namelist
-
+                            40,1,1, &               !114-116
+                            1,1,1, &                !117-119
+                            10,10]                  !120-121 (numLakeLayers = 10)
    ldasOutDict%missingReal(:) = [-9999.0,-9999.0,-9999.0,-9999.0,-9999.0, & !1-5
                                  -9999.0,-9999.0,-9999.0,-9999.0,-9999.0, & !6-10
                                  -9999.0,-9999.0,-9999.0,-9999.0,-9999.0, & !11-15
@@ -1354,8 +1369,9 @@ subroutine initLdasDict(ldasOutDict,procId,diagFlag)
                                  -9999.0,-9999.0,-9999.0,                 & !105-107
                                  -9999.0,-9999.0,-9999.0,                 & !108-110
                                  -9999.0,-9999.0,-9999.0,                 & !111-113
-                                 -9999.0,-9999.0,-9999.0 ]                  !114-116
-
+                                 -9999.0,-9999.0,-9999.0,                 & !114-116
+                                 -9999.0,-9999.0,-9999.0,                 & !117-119
+                                 -9999.0,-9999.0]                           !120-121
    ldasOutDict%fillReal(:) = [-9999.0,-9999.0,-9999.0,-9999.0,-9999.0, & !1-5
                               -9999.0,-9999.0,-9999.0,-9999.0,-9999.0, & !6-10
                               -9999.0,-9999.0,-9999.0,-9999.0,-9999.0, & !11-15
@@ -1375,14 +1391,18 @@ subroutine initLdasDict(ldasOutDict,procId,diagFlag)
                               -9999.0,-9999.0,-9999.0,-9999.0,-9999.0, & !81-85
                               -9999.0,-9999.0,-9999.0,-9999.0,-9999.0, & !86-90
                               -9999.0,-9999.0,-9999.0,-9999.0,-9999.0, & !91-95
+<<<<<<< HEAD
                               -9999.0,-9999.0,-999.0,                  & !96-98
                               -9999.0,-9999.0,-9999.0,                 & !99-101
                               -9999.0,-9999.0,-9999.0,                 & !102-104
                               -9999.0,-9999.0,-9999.0,                 & !105-107
                               -9999.0,-9999.0,-9999.0,                 & !108-110
                               -9999.0,-9999.0,-9999.0,                 & !111-113
-                              -9999.0,-9999.0,-9999.0 ]                  !114-116
-
+                              -9999.0,-9999.0,-9999.0,                 & !114-116
+=======
+                              -9999.0,-9999.0,-9999.0,                 & !117-119
+                              -9999.0,-9999.0]                           !120-121
+>>>>>>> 7247739e (new 2D (precip, evap,depth) and 3D (temperature and ice) vars (all lake related) are added to LDASOUT file)
    ldasOutDict%validMinDbl(:) = [0.0d0, 0.0d0, 0.0d0, 0.0d0, 0.0d0, &                     !1-5
                                  -1000.0d0, -1.0d0, -1500.0d0, 0.0d0, 0.0d0, &            !6-10
                                  -1500.0d0, -1500.0d0, -1500.0d0, -1500.0d0, -1500.0d0, & !11-15
@@ -1402,6 +1422,7 @@ subroutine initLdasDict(ldasOutDict,procId,diagFlag)
                                  0.0d0, 0.0d0, 0.0d0, 0.0d0, 0.0d0, &                     !81-85
                                  0.0d0, 0.0d0, 0.0d0, 0.0d0, -1000.0d0, &                 !86-90
                                  -5.0d0, 0.0d0, 0.0d0, 0.0d0, 0.0d0, &                    !91-95
+<<<<<<< HEAD
                                  0.0d0, 0.0d0, 0.0d0,&                                    !96-98
    !! NBNB Check these values
                                  0.0d0,0.0d0,0.0d00, &                                    !99-101
@@ -1411,6 +1432,10 @@ subroutine initLdasDict(ldasOutDict,procId,diagFlag)
                                  0.0d0,-1.0d0+7,0.0d0, &                                  !111-113
                                  0.0d0,0.0d0,0.0d0 ]                                      !114-116
 
+=======
+                                 0.0d0, 0.0d0, 0.0d0, 0.0d0, 0.0d0,&                      !96-100
+                                 0.0d0, 0.0d0, 0.0d0]                                     !101-103
+>>>>>>> 7247739e (new 2D (precip, evap,depth) and 3D (temperature and ice) vars (all lake related) are added to LDASOUT file)
    ldasOutDict%validMaxDbl(:) = [100.0d0, 100.0d0, 1.0d0, 20.0d0, 20.0d0, &             !1-5
                                  3000.0d0, 1.0d0, 1500.0d0, 100.0d0, 1.0d0, &           !6-10
                                  1500.0d0, 1500.0d0, 1500.0d0, 1500.0d0, 1500.0d0, &    !11-15
@@ -1430,6 +1455,7 @@ subroutine initLdasDict(ldasOutDict,procId,diagFlag)
                                  1000.0d0, 1000.0d0, 5000.0d0, 5000.0d0, 1000.0d0, &    !81-85
                                  1000.0d0, 1000.0d0, 1000.0d0, 1000.0d0, 1.0D+6, &      !86-90
                                  30000.0d0, 1.0d0, 1.0d0, 1.0d0, 400.0d0, &             !91-95
+<<<<<<< HEAD
                                  1.0d0, 1.0d0, 100.0d0,&                                !96-98
    ! NBNB Check these values
                                  1.0d0,10000.0d0,1.0d0, &                               !99-101
@@ -1439,6 +1465,10 @@ subroutine initLdasDict(ldasOutDict,procId,diagFlag)
                                  1.0d0, 0.0d0, 1.0D+3, &                                !111-113
                                  1.0D+9,1000.d0,1000.d0]                                !114-116
 
+=======
+                                 1.0d0, 1.0d0, 100.0d0, 10000.0d0, 10000.0d0,  &          !96-100
+                                 2000.0d0, 400.0d0, 1.0d0]                              !101-103
+>>>>>>> 7247739e (new 2D (precip, evap,depth) and 3D (temperature and ice) vars (all lake related) are added to LDASOUT file)
    ! Loop through and calculate missing/fill/min/max values that will be placed
    ! into the NetCDF attributes after scale_factor/add_offset are applied.
    do i=1,numLdasVars
@@ -1903,7 +1933,7 @@ subroutine initLakeDict(lakeOutDict,procId,diagFlag)
    lakeOutDict%timeZeroFlag(:) = [1,1,1,1]
    lakeOutDict%fillReal(:) = [-9999.0,-9999.0,-9999.0,-9999.0]
    lakeOutDict%missingReal(:) = [-9999.0,-9999.0,-9999.0,-9999.0]
-   lakeOutDict%validMinDbl(:) = [-10000.0d0, -10000.0d0, -10000.0d0, -10000.0d0]
+   lakeOutDict%validMinDbl(:) = [-10000.0d0, -10000.0d0, 0.0d0, 0.0d0]
    lakeOutDict%validMaxDbl(:) = [10000.0d0, 10000.0d0, 10000.0d0, 10000.0d0]
 
    ! Loop through and calculate missing/fill/min/max values that will be placed
