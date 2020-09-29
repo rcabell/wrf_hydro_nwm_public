@@ -12,3 +12,4 @@ add_library(noahmp_phys STATIC
 )
 
 target_link_libraries(noahmp_phys crocus_surfex)
+add_dependencies(noahmp_phys noahmp_util)
