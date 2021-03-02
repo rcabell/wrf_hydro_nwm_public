@@ -186,7 +186,7 @@ message("=============================================================")
 if (CMAKE_Fortran_COMPILER_ID MATCHES "GNU.*")
     # set compile flags for gfortran
     message ( "-- Using gfortran")
-    set (CMAKE_Fortran_FLAGS "-cpp -O2 -g -w -ffree-form -ffree-line-length-none -fconvert=big-endian -frecord-marker=4")
+    set (CMAKE_Fortran_FLAGS "-cpp -O2 -g -w -ffree-line-length-none -fconvert=big-endian -frecord-marker=4 -std=legacy")
 elseif (CMAKE_Fortran_COMPILER_ID MATCHES "Intel.*")
     # set compile flags for ifort
     message ( "Using ifort")
@@ -198,6 +198,7 @@ else (CMAKE_Fortran_COMPILER_ID MATCHES "GNU.*")
     set (CMAKE_Fortran_FLAGS_RELEASE "-cpp -O2")
     set (CMAKE_Fortran_FLAGS_DEBUG   "-cpp -O0 -g")
 endif ( CMAKE_Fortran_COMPILER_ID MATCHES "GNU.*" )
+set(CMAKE_Fortran_FORMAT FREE)
 
 #set output directories for libraries binaries and fortran .mod files
 set(CMAKE_BINARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
@@ -224,6 +225,9 @@ add_subdirectory("Routing/Reservoirs")
 add_subdirectory("Data_Rec")
 add_subdirectory("Routing")
 add_subdirectory("HYDRO_drv")
+
+add_subdirectory("parflow")
+add_dependencies(hydro_driver parflow)
 
 if (WRF_HYDRO_NUDGING STREQUAL "1")
 	add_subdirectory("nudging")
@@ -308,6 +312,7 @@ if (HYDRO_LSM MATCHES "NoahMP")
 	target_link_libraries(wrfhydro.exe noahmp_phys)
 	target_link_libraries(wrfhydro.exe noahmp_data)
 	target_link_libraries(wrfhydro.exe hydro_noahmp_cpl)
+	target_link_libraries(wrfhydro.exe pfsimulator)
 	target_link_libraries(wrfhydro.exe ${NETCDF_LIBRARIES})
 
 	if (WRF_HYDRO_NUDGING STREQUAL "1")

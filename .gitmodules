@@ -1,0 +1,4 @@
+[submodule "trunk/NDHMS/parflow"]
+	path = trunk/NDHMS/parflow
+	url = https://github.com/rcabell/parflow.git
+	branch = wrf-hydro_coupling
