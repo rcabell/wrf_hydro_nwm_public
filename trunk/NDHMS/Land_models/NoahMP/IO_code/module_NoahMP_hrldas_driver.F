@@ -395,7 +395,14 @@ module module_NoahMP_hrldas_driver
 
   integer :: xstart, xend, ystart, yend !convenience variables
 
-  contains
+  interface
+    subroutine WRFParFlowInit(input_file) bind(c, name='wrfparflowinit_')
+      use, intrinsic :: iso_c_binding
+      character(kind=c_char), dimension(*) :: input_file
+    end subroutine WRFParFlowInit
+  end interface
+
+contains
 
   subroutine land_driver_ini(NTIME_out, state, wrfits,wrfite,wrfjts,wrfjte)
      use module_HYDRO_drv, only: HYDRO_ini
@@ -403,7 +410,10 @@ module module_NoahMP_hrldas_driver
      use module_rt_data, only: rt_domain
      use module_hrldas_HYDRO, only: open_print_mpp
      use state_module, only: state_type
+     use, intrinsic :: iso_c_binding, only: c_char, c_null_char
+
      implicit  none
+
      integer:: NTIME_out
      integer, parameter :: did=1
      integer :: khour
@@ -412,9 +422,13 @@ module module_NoahMP_hrldas_driver
     ! initilization for stand alone parallel code.
     integer, optional, intent(in) :: wrfits,wrfite,wrfjts,wrfjte
 
+     character (len=12, kind=c_char) :: parflow_filename = "pf-wrfhydro"//c_null_char
+
 #ifdef MPP_LAND
     call read_dim(noah_lsm%hrldas_setup_file,ix_tmp,jx_tmp)
     call MPP_LAND_INIT(ix_tmp,jx_tmp)
+    ! Init ParFlow
+    call WRFParFlowInit(parflow_filename)
 #endif
 
 #ifdef WRF_HYDRO

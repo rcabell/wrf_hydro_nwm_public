@@ -1,4 +1,5 @@
 cmake_minimum_required (VERSION 2.8)
+# set(CMAKE_VERBOSE_MAKEFILE ON)
 
 if (NOT CMAKE_C_COMPILER)
 	set (CMAKE_C_COMPILER "mpicc")
@@ -226,6 +227,7 @@ add_subdirectory("Data_Rec")
 add_subdirectory("Routing")
 add_subdirectory("HYDRO_drv")
 
+set(PARFLOW_AMPS_LAYER "mpi1")
 add_subdirectory("parflow")
 add_dependencies(hydro_driver parflow)
 
@@ -283,6 +285,7 @@ if (HYDRO_LSM MATCHES "NoahMP")
 	add_dependencies(hydro_noahmp_cpl hydro_mpp )
 	add_dependencies(hydro_noahmp_cpl hydro_driver )
 
+	add_dependencies(hydro_noahmp_cpl pfsimulator)
 
 	add_executable(wrfhydro.exe
 		Land_models/NoahMP/IO_code/main_hrldas_driver.F
