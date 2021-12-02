@@ -7561,13 +7561,13 @@ ENDIF   ! CROPTYPE == 0
 
     DO IZ=1,NSOIL-2
        IF ((SMC(IZ)-parameters%SMCREF(IZ)) .GT. 0.) THEN ! soil moisture greater than field capacity
-          SM     = SM + (SMC(IZ) - parameters%SMCREF(IZ) )*-1*ZSOIL(IZ) !m
-          WM     = WM + (parameters%SMCREF(IZ)*-1*ZSOIL(IZ))            !m  
+          SM     = SM + (SMC(IZ) - parameters%SMCREF(IZ) )*(-1)*ZSOIL(IZ) !m
+          WM     = WM + (parameters%SMCREF(IZ)*(-1)*ZSOIL(IZ))            !m  
        ELSE
-          WM     = WM + (SMC(IZ)*-1*ZSOIL(IZ))
+          WM     = WM + (SMC(IZ)*(-1)*ZSOIL(IZ))
        END IF
-       WM_MAX = WM_MAX + (parameters%SMCREF(IZ)*-1*ZSOIL(IZ))
-       SM_MAX = SM_MAX + (parameters%SMCMAX(IZ) - parameters%SMCREF(IZ))*-1*ZSOIL(IZ)
+       WM_MAX = WM_MAX + (parameters%SMCREF(IZ)*(-1)*ZSOIL(IZ))
+       SM_MAX = SM_MAX + (parameters%SMCMAX(IZ) - parameters%SMCREF(IZ))*(-1)*ZSOIL(IZ)
     END DO
 
     WM = MIN(WM,WM_MAX) ! tension water (m) 

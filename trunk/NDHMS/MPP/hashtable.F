@@ -114,7 +114,7 @@ contains
     integer(kind=int64), intent(in) :: key
     integer(kind=int64), intent(in) :: value
     integer(kind=int64) bucket_id
-    logical :: is_new
+    logical :: is_new = .false.
 
     bucket_id = modulo(this%hash(key), this%n_buckets) + 1
 
