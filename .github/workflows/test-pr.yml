@@ -57,12 +57,18 @@ jobs:
           ref: ${{ github.event.before }}
           path: reference
           
-      - name: Checkout reference (manual)
-        if: ${{ github.event_name == 'workflow_dispatch' }}
+      - name: Checkout reference (manual / PR)
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.pr > 0}}
         env: 
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
         run: gh repo clone ${{ github.repository }} reference && cd reference && git checkout origin/$(gh pr view ${{ github.event.inputs.pr }} --json baseRefName --jq '.baseRefName')
-      
+
+      - name: Checkout reference (manual / branch)
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.pr == 0}}
+        env: 
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+        run: gh repo clone NCAR/wrf_hydro_nwm_public reference
+        
       - name: Run testing container
         run: |
           docker run -e TRAVIS=1 -t --name test_container \
