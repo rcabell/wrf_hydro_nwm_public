@@ -12,6 +12,9 @@ on:
       pr:
         description: "PR to test"
         required: true
+      branch:
+        description: "Branch to test"
+        required: false
 
 jobs:
   Model_Testing:
@@ -28,11 +31,17 @@ jobs:
         with:
           path: candidate
           
-      - name: Checkout candidate (manual)
-        if: ${{ github.event_name == 'workflow_dispatch' }}
+      - name: Checkout candidate (manual / PR)
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.pr > 0}}
         env: 
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
         run: gh repo clone ${{ github.repository }} candidate && cd candidate && gh pr checkout -R ${{ github.repository }} ${{ github.event.inputs.pr }}
+    
+      - name: Checkout candidate (manual / branch)
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.pr == 0}}
+        env: 
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+        run: gh repo clone ${{ github.repository }} candidate -- -b ${{ github.event.inputs.branch }}
 
       - name: Checkout reference (pull request)
         if: ${{ github.event_name == 'pull_request' }}
