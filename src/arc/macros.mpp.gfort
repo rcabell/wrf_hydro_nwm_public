@@ -65,4 +65,4 @@ CPPFLAGS	=       -DMPP_LAND -I"../Data_Rec" $(HYDRO_D) $(SPATIAL_SOIL) $(NWM_MET
 
 LIBS 	        =	
 NETCDFINC       =       $(NETCDF_INC)
-NETCDFLIB       =       -L$(NETCDF_LIB) -lnetcdff -lnetcdf
+NETCDFLIB       =       -L$(NETCDF_LIB) -lnetcdff

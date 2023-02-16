@@ -23,7 +23,7 @@ fi
 
 if [[ -z $NETCDF_INC ]]; then
     if [[ -z $NETCDF ]]; then
-	NETCDF_INC=`nc-config --includedir 2> /dev/null`
+	NETCDF_INC=`nf-config --includedir 2> /dev/null`
     else
 	NETCDF_INC=${NETCDF}/include
     fi
@@ -36,7 +36,7 @@ fi
 
 if [[ -z $NETCDF_LIB ]]; then
     if [[ -z $NETCDF ]]; then
-	NETCDF_LIB=`nc-config --libs | cut -c3- | cut -d' ' -f1`
+	NETCDF_LIB=`nf-config --flibs | cut -c3- | cut -d' ' -f1`
     else
 	NETCDF_LIB=${NETCDF}/lib
     fi
