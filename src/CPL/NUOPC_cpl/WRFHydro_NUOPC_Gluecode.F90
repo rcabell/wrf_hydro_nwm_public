@@ -13,6 +13,7 @@ module wrfhydro_nuopc_gluecode
 !  13Oct15    Dan Rosen  Initial Specification
 !
 ! !USES:
+  use iso_fortran_env, only: int64
   use ESMF
   use NUOPC
   use WRFHydro_ESMF_Extensions
@@ -94,6 +95,24 @@ module wrfhydro_nuopc_gluecode
   type(ESMF_DistGrid)   :: WRFHYDRO_DistGrid ! One DistGrid created with ConfigFile dimensions
   character(len=512)  :: logMsg
 
+  ! data structure for coastal reaches (may want to move this into a new module)
+  type coastal_reach
+    sequence
+    integer(kind=int64) :: endpt_ID
+    integer(kind=int64) :: comid
+    real :: lat
+    real :: lon
+    real :: uparea_km2
+  end type coastal_reach
+  type(coastal_reach), allocatable :: coastal_reaches(:)
+
+  real, allocatable :: local_coastal_reach_discharges(:)
+  real, allocatable :: global_coastal_reach_discharges(:)
+  type(ESMF_LocStream)  :: WRFHYDRO_CoastalReach_LocStream
+  type(ESMF_Field) :: coastal_reach_discharge_field
+  type(ESMF_RouteHandle) :: coastal_reach_route_handle
+  logical :: route_handle_created = .false.
+
   !-----------------------------------------------------------------------------
   ! Model Glue Code
   !-----------------------------------------------------------------------------
@@ -114,7 +133,7 @@ contains
     integer                     :: stat
     integer, allocatable        :: deBlockList(:,:,:)
     type(ESMF_DistGridConnection), allocatable :: connectionList(:)
-    integer                     :: i
+    integer                     :: i, irc
     type(ESMF_Time)             :: startTime
     type(ESMF_TimeInterval)     :: timeStep
     real(ESMF_KIND_R8)          :: dt
@@ -338,6 +357,11 @@ contains
     dtrt_ter0 = nlst(did)%dtrt_ter
     dtrt_ch0 = nlst(did)%dtrt_ch
 
+    if (nlst(did)%channel_option < 3) then
+      call wrfhydro_read_coastal_reaches(did, irc)
+      if (irc == 0) coastal_reaches_active = .true.
+    end if
+
     RT_DOMAIN(did)%initialized = .true.
 
     num_nests = num_nests + 1
@@ -447,6 +471,11 @@ contains
 
     ! Call the WRF-HYDRO run routine
     call HYDRO_exe(did=did)
+
+    ! Handle coastal reaches if active
+    if (coastal_reaches_active) then
+      call wrfhydro_update_coastal_reaches(did, rc)
+    end if
 
     ! provide groundwater soil flux to WRF for fully coupled simulations (FERSCH 09/2014)
     !if(nlst(did)%GWBASESWCRT .eq. 3 ) then
@@ -1222,4 +1251,241 @@ contains
 
   !-----------------------------------------------------------------------------
 
+#undef METHOD
+#define METHOD "wrfhydro_read_coastal_reaches"
+
+  subroutine wrfhydro_read_coastal_reaches(did, rc)
+    ! read a CSV file of coastal points along with reach COMIDs to pass channel outputs as fresh
+    ! water discharge to the ocean in coastal areas.  The file is expected to have the following format:
+    !
+    ! "endpt_ID","COMID","lat","lon","uparea_km2"
+    !
+    ! where endpt_ID is a unique identifier for the coastal point, COMID is the associated river reach COMID,
+    ! lat and lon are the latitude and longitude of the coastal point, and uparea_km2 is the upstream area in
+    ! square kilometers contributing to the coastal point.
+    use module_RT_data, only: rt_domain
+
+    integer, intent(in) :: did
+    integer, intent(out) :: rc
+
+    character(len=256) :: line
+    integer :: ios, unit, reach
+    integer :: num_coastal_reaches
+    integer(kind=int64) :: endpt_id, comid
+    real :: lat, lon, uparea_km2
+    real(ESMF_KIND_R8), pointer :: lats(:), lons(:)
+
+    type(ESMF_VM) :: currentVM
+    integer       :: local_pet
+
+    rc = 0  ! default to success, set to 1 if file not found, but not a fatal error
+
+    open(newunit=unit, file="DOMAIN/coastal_reaches.csv", status="old", action="read", iostat=ios)
+    if (ios /= 0) then
+      print *, "WRFHYDRO: No coastal_reaches.csv file found, skipping coastal reaches setup."
+      rc = 1
+      return
+    endif
+
+    ! Skip header line
+    ! TODO: verify that the header matches expected format?
+    read(unit, '(A)', iostat=ios) line
+    if (ios /= 0) then
+      print *, "WRFHYDRO: Error reading header from coastal_reaches.csv"
+      close(unit)
+      return
+    endif
+
+    ! count remaining lines to allocate the coastal_reaches array
+    num_coastal_reaches = 0
+    do
+      read(unit, '(A)', iostat=ios) line
+      if (ios /= 0) exit  ! End of file or error
+      num_coastal_reaches = num_coastal_reaches + 1
+    end do
+    rewind(unit)  ! reset file pointer to beginning
+    read(unit, '(A)', iostat=ios) line ! skip header line again
+
+    allocate(coastal_reaches(num_coastal_reaches), stat=ios)
+    if (ios /= 0) then
+      print *, "WRFHYDRO: Error allocating coastal_reaches array"
+      close(unit)
+      return
+    endif
+
+    ! create ESMF_LocStream from the reach points
+    WRFHYDRO_CoastalReach_LocStream = ESMF_LocStreamCreate(name='WRFHYDRO_CoastalReach_LocStream', &
+      localCount=num_coastal_reaches, &
+      coordSys=ESMF_COORDSYS_SPH_DEG, &
+      rc=rc)
+
+    call ESMF_LocStreamAddKey(WRFHYDRO_CoastalReach_LocStream, &
+                              keyName="ESMF:Lat",              &
+                              KeyTypeKind=ESMF_TYPEKIND_R8,    &
+                              keyUnits="Degrees",              &
+                              keyLongName="Latitude", rc=rc)
+    call ESMF_LocStreamAddKey(WRFHYDRO_CoastalReach_LocStream, &
+                              keyName="ESMF:Lon",              &
+                              KeyTypeKind=ESMF_TYPEKIND_R8,    &
+                              keyUnits="Degrees",              &
+                              keyLongName="Longitude", rc=rc)
+
+    call ESMF_LocStreamGetKey(WRFHYDRO_CoastalReach_LocStream, &
+                              keyName="ESMF:Lat",              &
+                              farray=lats,                     &
+                              rc=rc)
+    call ESMF_LocStreamGetKey(WRFHYDRO_CoastalReach_LocStream, &
+                              keyName="ESMF:Lon",              &
+                              farray=lons,                     &
+                              rc=rc)
+
+    do reach = 1, num_coastal_reaches
+      read(unit, '(A)', iostat=ios) line
+      if (ios /= 0) exit  ! End of file or error TODO: this should not happen since we just counted the lines, but handle it just in case
+
+      read(line, '(I,I,F,F,F)', iostat=ios) endpt_id, comid, lat, lon, uparea_km2
+      if (ios /= 0) then
+        print *, "WRFHYDRO: Error parsing line: ", trim(line)
+        cycle
+      endif
+
+      ! set lat and lon into the LocStream
+      lats(reach) = lat
+      lons(reach) = lon
+
+      ! this array will be tracked by each processor
+      coastal_reaches(reach) = coastal_reach(endpt_id=endpt_id, comid=comid, lat=lat, lon=lon, uparea_km2=uparea_km2)
+    end do
+
+    close(unit)
+
+    ! allocate the data arrays for the discharges
+
+    allocate(local_coastal_reach_discharges(num_coastal_reaches), stat=ios)
+    if (ios /= 0) then
+      print *, "WRFHYDRO: Error allocating local_coastal_reach_discharges array"
+      close(unit)
+      rc = 1
+      return
+    endif
+
+    allocate (global_coastal_reach_discharges(size(local_coastal_reach_discharges)), stat=ios)
+    if (ios /= 0) then
+      print *, "WRFHYDRO: Error allocating global_coastal_reach_discharges array"
+      close(unit)
+      rc = 1
+      return
+    endif
+
+    coastal_reach_discharge_field = ESMF_FieldCreate(name="coastal_reach_discharge_field", &
+      locstream=WRFHYDRO_CoastalReach_LocStream, &
+      farray=global_coastal_reach_discharges, &
+      indexflag=ESMF_INDEX_DELOCAL, &
+      rc=rc)
+    if (ESMF_STDERRORCHECK(rc)) then
+      print *, "WRFHYDRO: Error creating coastal_reach_discharge_field"
+    end if
+
+    ! create the gridded coastal reach array
+
+    allocate(gridded_coastal_reach_discharges(rt_domain(did)%IX, rt_domain(did)%JX), stat=ios)
+    if (ios /= 0) then
+      print *, "WRFHYDRO: Error allocating gridded_coastal_reach_discharges array"
+      close(unit)
+      rc = 1
+      return
+    endif
+
+    ESMF_LogWrite("WRFHYDRO: Successfully read coastal reaches file with "//trim(adjustl(itoa(num_coastal_reaches)))//" reaches.", ESMF_LOGMSG_INFO, rc=rc)
+  end subroutine
+
+#undef METHOD
+#define METHOD "wrfhydro_update_coastal_reaches"
+
+  subroutine wrfhydro_update_coastal_reaches(did, rc)
+    use module_RT_data, only: rt_domain
+
+    integer, intent(in) :: did
+    integer, intent(out) :: rc
+
+    integer(kind=int64) :: comid
+    integer :: reach, idx
+    type(ESMF_VM) :: currentVM
+
+    real :: avg_discharge
+    real :: temp
+    integer :: local_pet
+
+    print *, "WRFHYDRO: Updating coastal reach discharges"
+
+    rc = 0
+    avg_discharge = 0.0
+
+    ! set all dischharges to zero by default
+    local_coastal_reach_discharges = 0.0
+
+    do reach = 1, size(coastal_reaches)
+      comid = coastal_reaches(reach)%comid
+      if (any(comid == rt_domain(did)%LLINKID)) then
+        idx = findloc(rt_domain(did)%LLINKID, comid, dim=1)
+
+        temp = rt_domain(did)%qlink(idx, 2)
+        if (temp /= temp) then ! check if temp is NaN and set to 0
+          temp = 0.0
+        end if
+
+        local_coastal_reach_discharges(reach) = temp
+      end if
+    end do
+
+    ! reduce local_coastal_reach_discharges to root rank
+    ! TODO: map each reach in the array to the owning processor in a 1D arbitary-index DistGrid
+    call ESMF_VMGetCurrent(currentVM, rc=rc)
+    call ESMF_VMGet(currentVM, localPet=local_pet, rc=rc)
+
+    ! print *, "WRFHYDRO: ", cpl_outdate, "coastal max() = ", maxval(local_coastal_reach_discharges), " for PET: ", local_pet
+
+    if (local_pet == IO_id) then
+      global_coastal_reach_discharges = 0.0
+    end if
+
+    call ESMF_VMReduce(currentVM, local_coastal_reach_discharges, global_coastal_reach_discharges, size(local_coastal_reach_discharges), &
+      reduceFlag=ESMF_REDUCE_SUM, rootPet=IO_id, rc=rc)
+
+    ! regrid locstream to grid and store in gridded_coastal_reach_discharges for CMEPS usage
+    ! if (associated(gridded_coastal_reach_field)) then
+      if (.not. route_handle_created) then
+        ! create a route handle between the locstream and the grid
+        ! we do this here so we can reuse the export field created during Advertise
+        call ESMF_FieldRegridStore(coastal_reach_discharge_field, gridded_coastal_reach_field, &
+          regridMethod=ESMF_REGRIDMETHOD_NEAREST_DTOS, &
+          ! extrapMethod=ESMF_EXTRAPMETHOD_CREEP, &
+          unmappedAction=ESMF_UNMAPPEDACTION_IGNORE, &
+          routehandle=coastal_reach_route_handle, &
+          rc=rc)
+        if (ESMF_STDERRORCHECK(rc)) then
+          call ESMF_LogSetError(ESMF_FAILURE, &
+            msg="Error creating coastal reach regridding route handle.", &
+            file=FILENAME, rcToReturn=rc)
+        else
+          call ESMF_LogWrite("Created coastal reach regridding route handle.", ESMF_LOGMSG_INFO, rc=rc)
+          route_handle_created = .true.
+        end if
+      end if
+      call ESMF_FieldRegrid(coastal_reach_discharge_field, gridded_coastal_reach_field, &
+        routehandle=coastal_reach_route_handle, &
+        rc=rc)
+      if (ESMF_STDERRORCHECK(rc)) then
+        call ESMF_LogSetError(ESMF_FAILURE, &
+          msg="Error regridding coastal reach discharges to grid.", &
+          file=FILENAME, rcToReturn=rc)
+      end if
+    !else
+    !  ! shouldn't get here, but if somehow the field isn't associated, log an error and exit
+    !!  print *, "WRFHYDRO: Error: gridded_coastal_reach_field is not associated, cannot regrid coastal reach discharges to grid."
+    !  rc = ESMF_FAILURE
+    !end if
+
+
+  end subroutine
 end module

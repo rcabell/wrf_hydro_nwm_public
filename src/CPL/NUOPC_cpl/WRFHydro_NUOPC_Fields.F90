@@ -37,7 +37,7 @@ module wrfhydro_nuopc_fields
     logical                     :: rl_export = .FALSE. ! realize export
   end type cap_fld_type
 
-  type(cap_fld_type),target,dimension(20) :: cap_fld_list = (/          &
+  type(cap_fld_type),target,dimension(21) :: cap_fld_list = (/          &
     cap_fld_type("inst_total_soil_moisture_content        ","smc     ", &
                  "m3 m-3",.TRUE. ,.TRUE. ,0.20d0),                      &
     cap_fld_type("inst_soil_moisture_content              ","slc     ", &
@@ -77,8 +77,16 @@ module wrfhydro_nuopc_fields
     cap_fld_type("time_step_infiltration_excess           ","infxsrt ", &
                  "mm    ",.TRUE. ,.FALSE.,0.00d0),                      &
     cap_fld_type("soil_column_drainage                    ","soldrain", &
-                 "mm    ",.TRUE. ,.FALSE.,0.00d0)                       &
-    /)
+                 "mm    ",.TRUE. ,.FALSE.,0.00d0),                      &
+    cap_fld_type("Forr_rofl                               ","Forr_rofl",&
+                 "kg m-2 s-1", .FALSE. ,.TRUE., 0.00d0)                 &
+  /)
+
+  real, allocatable :: gridded_coastal_reach_discharges(:,:)
+
+  logical :: coastal_reaches_active = .false.
+
+  type(ESMF_Field) :: gridded_coastal_reach_field
 
   public cap_fld_list
   public field_dictionary_add
@@ -99,6 +107,10 @@ module wrfhydro_nuopc_fields
   public state_check_missing
   public state_prescribe_missing
   public model_debug
+
+  public gridded_coastal_reach_discharges
+  public gridded_coastal_reach_field
+  public coastal_reaches_active
 
   !-----------------------------------------------------------------------------
   contains
@@ -766,6 +778,13 @@ module wrfhydro_nuopc_fields
             farray=rt_domain(did)%soldrain, &
             indexflag=ESMF_INDEX_DELOCAL, rc=rc)
           if (ESMF_STDERRORCHECK(rc)) return
+        case ('Forr_rofl')
+          print *, "WRFHYDRO: Creating field Forr_rofl"
+          gridded_coastal_reach_field = ESMF_FieldCreate(name=fld_name, grid=grid, &
+            farray=gridded_coastal_reach_discharges, &
+            indexflag=ESMF_INDEX_DELOCAL, rc=rc)
+          if (ESMF_STDERRORCHECK(rc)) return
+          field_create = gridded_coastal_reach_field
         case default
           call ESMF_LogSetError(ESMF_FAILURE, &
             msg=METHOD//": Field hookup missing: "//trim(fld_name), &
