@@ -7,4 +7,5 @@ add_library(noahmp_phys STATIC
         module_sf_noahmplsm.F
 )
 
-target_link_libraries(noahmp_phys snowcro crocus_surfex)
+target_link_libraries(noahmp_phys noahmp_submodule snowcro crocus_surfex)
+add_dependencies(noahmp_phys noahmp_submodule)

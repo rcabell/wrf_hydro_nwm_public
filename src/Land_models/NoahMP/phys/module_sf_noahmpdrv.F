@@ -6,6 +6,14 @@ MODULE module_sf_noahmpdrv
 #endif
 !-------------------------------
 
+  USE NoahmpIOVarType
+  USE NoahmpIOVarInitMod, ONLY: NoahmpIOVarInitDefault
+  USE NoahmpReadTableMod, ONLY: NoahmpReadTable
+
+  type(NoahmpIO_type), save :: NoahmpIO_sub
+  logical, save :: submodule_initialized = .false.
+  character(len=256), save :: saved_landuse = 'USGS'
+
 !
 CONTAINS
 !
@@ -75,6 +83,18 @@ CONTAINS
     USE NOAHMP_TABLES, ONLY: ISICE_TABLE, CO2_TABLE, O2_TABLE, HVB_TABLE, HVT_TABLE
     USE module_snowcro
     USE MODD_SNOW_PAR, ONLY: XZ0SN, XZ0HSN
+    USE NoahmpVarType
+    USE ConfigVarInitMod,        ONLY: ConfigVarInitDefault
+    USE EnergyVarInitMod,        ONLY: EnergyVarInitDefault
+    USE ForcingVarInitMod,       ONLY: ForcingVarInitDefault
+    USE WaterVarInitMod,         ONLY: WaterVarInitDefault
+    USE BiochemVarInitMod,       ONLY: BiochemVarInitDefault
+    USE ConfigVarInTransferMod,  ONLY: ConfigVarInTransfer
+    USE EnergyVarInTransferMod,  ONLY: EnergyVarInTransfer
+    USE ForcingVarInTransferMod, ONLY: ForcingVarInTransfer
+    USE WaterVarInTransferMod,   ONLY: WaterVarInTransfer
+    USE BiochemVarInTransferMod, ONLY: BiochemVarInTransfer
+    USE NoahmpMainMod,           ONLY: NoahmpMain
 
 !----------------------------------------------------------------
     IMPLICIT NONE
@@ -477,6 +497,7 @@ CONTAINS
     REAL, PARAMETER                     :: undefined_value = -1.E36
 
     type(noahmp_parameters) :: parameters
+    type(noahmp_type) :: noahmp_col
 
 
     INTEGER,                INTENT(IN)                 :: act_level
@@ -615,6 +636,25 @@ CONTAINS
                      IOPT_INF  ,IOPT_RAD  ,IOPT_ALB  ,IOPT_SNF  ,IOPT_TBOT, IOPT_STC , &
 		     IOPT_RSF  ,IOPT_SOIL ,IOPT_PEDO ,IOPT_CROP, IOPT_IMPERV )
 
+! ---------- Initialize submodule NoahmpIO bridge (once) ----------
+    if (.not. submodule_initialized) then
+       NoahmpIO_sub%XSTART = ids
+       NoahmpIO_sub%XEND   = ide
+       NoahmpIO_sub%YSTART = jds
+       NoahmpIO_sub%YEND   = jde
+       NoahmpIO_sub%KMS    = kms
+       NoahmpIO_sub%KME    = kme
+       NoahmpIO_sub%KTS    = kts
+       NoahmpIO_sub%KTE    = kte
+       NoahmpIO_sub%NSOIL  = NSOIL
+       NoahmpIO_sub%NSNOW  = NSNOW
+       NoahmpIO_sub%NUMRAD = 2
+       NoahmpIO_sub%LLANDUSE = saved_landuse
+       call NoahmpIOVarInitDefault(NoahmpIO_sub)
+       call NoahmpReadTable(NoahmpIO_sub)
+       submodule_initialized = .true.
+    endif
+
     IPRINT    =  .false.                     ! debug printout
 
     YEARLEN = 365                            ! find length of year for phenology (also S Hemisphere)
@@ -632,6 +672,46 @@ CONTAINS
     DO K = 2, NSOIL
        ZSOIL(K) = -DZS(K) + ZSOIL(K-1)
     END DO
+
+! Set per-call scalar values on NoahmpIO bridge
+    NoahmpIO_sub%DTBL    = DT
+    NoahmpIO_sub%DX      = DX
+    NoahmpIO_sub%DY      = DX
+    NoahmpIO_sub%JULIAN  = JULIAN
+    NoahmpIO_sub%YEARLEN = YEARLEN
+    NoahmpIO_sub%calculate_soil    = .true.
+    NoahmpIO_sub%soil_update_steps = 1
+    NoahmpIO_sub%SF_URBAN_PHYSICS  = 0
+    NoahmpIO_sub%ZSOIL(1:NSOIL) = ZSOIL(1:NSOIL)
+
+! Set physics options on NoahmpIO bridge
+    NoahmpIO_sub%IOPT_DVEG    = IDVEG
+    NoahmpIO_sub%IOPT_CRS     = IOPT_CRS
+    NoahmpIO_sub%IOPT_BTR     = IOPT_BTR
+    NoahmpIO_sub%IOPT_RUNSRF  = IOPT_RUN
+    NoahmpIO_sub%IOPT_RUNSUB  = IOPT_RUN
+    NoahmpIO_sub%IOPT_SFC     = IOPT_SFC
+    NoahmpIO_sub%IOPT_FRZ     = IOPT_FRZ
+    NoahmpIO_sub%IOPT_INF     = IOPT_INF
+    NoahmpIO_sub%IOPT_RAD     = IOPT_RAD
+    NoahmpIO_sub%IOPT_ALB     = IOPT_ALB
+    NoahmpIO_sub%IOPT_SNF     = IOPT_SNF
+    NoahmpIO_sub%IOPT_TBOT    = IOPT_TBOT
+    NoahmpIO_sub%IOPT_STC     = IOPT_STC
+    NoahmpIO_sub%IOPT_GLA     = IOPT_GLA
+    NoahmpIO_sub%IOPT_RSF     = IOPT_RSF
+    NoahmpIO_sub%IOPT_SOIL    = IOPT_SOIL
+    NoahmpIO_sub%IOPT_PEDO    = IOPT_PEDO
+    NoahmpIO_sub%IOPT_CROP    = IOPT_CROP
+    NoahmpIO_sub%IOPT_TKSNO   = 0
+    NoahmpIO_sub%IOPT_COMPACT = 1
+    NoahmpIO_sub%IOPT_SCF     = 1
+    NoahmpIO_sub%IOPT_WETLAND = 0
+    NoahmpIO_sub%IOPT_TDRN    = 0
+    NoahmpIO_sub%IOPT_IRR     = 0
+    NoahmpIO_sub%IOPT_IRRM    = 0
+    NoahmpIO_sub%IOPT_INFDV   = 0
+! -----------------------------------------------------------------
 
     JLOOP : DO J=jts,jte
        IF(ITIMESTEP == 1)THEN
@@ -1000,7 +1080,7 @@ CONTAINS
                                   ! move NOAHMP_GLACIER to after CROCUS
                                   ! for temperatre glacier, set top soil temp to 272
           ZP_TG(1) = 272.0
-          ! Why is this if block here? Not sure top condition would ever trigger  
+          ! Why is this if block here? Not sure top condition would ever trigger
           ! given we are already in an if block requiring ZP_SNOWDZ(1,1) .gt. 0.0. (AD)
           IF (ZP_SNOWDZ(1,1) .eq. 0.0 .and. ZP_SRSNOW(1) .eq. 0.0) THEN
           ELSE
@@ -1267,41 +1347,273 @@ CONTAINS
          end if ! crocus_opt /= 0
 
 
-         CALL NOAHMP_SFLX (parameters, &
-            I       , J       , LAT     , YEARLEN , JULIAN  , COSZ    , & ! IN : Time/Space-related
-            DT      , DX      , DZ8W1D  , NSOIL   , ZSOIL   , NSNOW   , & ! IN : Model configuration
-            FVEG    , FVGMAX  , VEGTYP  , ICE     , IST     , CROPTYPE, & ! IN : Vegetation/Soil characteristics
-            SMCEQ   ,                                                   & ! IN : Vegetation/Soil characteristics
-            T_ML    , P_ML    , PSFC    , U_ML    , V_ML    , Q_ML    , & ! IN : Forcing
-            QC      , SWDN    , LWDN    ,                               & ! IN : Forcing
-	    PRCPCONV, PRCPNONC, PRCPSHCV, PRCPSNOW, PRCPGRPL, PRCPHAIL, & ! IN : Forcing
-            TBOT    , CO2PP   , O2PP    , FOLN    , FICEOLD , Z_ML    , & ! IN : Forcing
-            ALBOLD  , SNEQVO  ,                                         & ! IN/OUT :
-            STC     , SMH2O   , SMC     , TAH     , EAH     , FWET    , & ! IN/OUT :
-            CANLIQ  , CANICE  , TV      , TG    , QSFC1D, QSNOW, QRAIN, & ! IN/OUT :
-            ISNOW   , ZSNSO   , SNDPTH  , SWE     , SNICE   , SNLIQ   , & ! IN/OUT :
-            ZWT     , WA      , WT      , WSLAKE  , LFMASS  , RTMASS  , & ! IN/OUT :
-            STMASS  , WOOD    , STBLCP  , FASTCP  , PLAI    , PSAI    , & ! IN/OUT :
-            CM      , CH      , TAUSS   ,                               & ! IN/OUT :
-            GRAIN   , GDD     , PGS     ,                               & ! IN/OUT
-            SMCWTD  ,DEEPRECH , RECH    ,                               & ! IN/OUT :
-            Z0WRF   ,                                                   &
-            FSA     , FSR     , FIRA    , FSH     , SSOIL   , FCEV    , & ! OUT :
-            FGEV    , FCTR    , ECAN    , ETRAN   , ESOIL   , TRAD    , & ! OUT :
-            TGB     , TGV     , T2MV    , T2MB    , Q2MV    , Q2MB    , & ! OUT :
-            RUNSF   , RUNSB   , APAR    , PSN     , SAV     , SAG     , & ! OUT :
-            FSNO    , NEE     , GPP     , NPP     , FVEGMP  , SALB    , & ! OUT :
-            QSNBOT  , PONDING , PONDING1, PONDING2, RSSUN   , RSSHA   , & ! OUT :
-            ALBSND  , ALBSNI  ,                                         & ! OUT :
-            BGAP    , WGAP    , CHV     , CHB     , EMISSI  ,           & ! OUT :
-            SHG     , SHC     , SHB     , EVG     , EVB     , GHV     , & ! OUT :
-	    GHB     , IRG     , IRC     , IRB     , TR      , EVC     , & ! OUT :
-	    CHLEAF  , CHUC    , CHV2    , CHB2    , FPICE   , PAHV    , &
-            PAHG    , PAHB    , PAH     , LAISUN  , LAISHA  , RB        &
+! ==================== Submodule NoahmpMain call ====================
+! Populate 1x1 NoahmpIO bridge for this grid point
+         NoahmpIO_sub%I = 1
+         NoahmpIO_sub%J = 1
+         NoahmpIO_sub%ICE = ICE
+         NoahmpIO_sub%SLOPETYP = SLOPETYP
+
+         ! Config 2D fields
+         NoahmpIO_sub%IVGTYP(1,1) = VEGTYP
+         NoahmpIO_sub%ISLTYP(1,1) = SOILTYP
+         NoahmpIO_sub%CROPCAT(1,1) = CROPTYPE
+         NoahmpIO_sub%XLAT(1,1) = LAT
+         NoahmpIO_sub%COSZEN(1,1) = COSZ
+         NoahmpIO_sub%XICE(1,1) = XICE(I,J)
+         NoahmpIO_sub%DZ8W(1,1,1) = DZ8W(I,1,J)
+         NoahmpIO_sub%VEGFRA(1,1) = FVEG * 100.0
+         NoahmpIO_sub%GVFMAX(1,1) = FVGMAX * 100.0
+
+         ! Forcing 2D/3D fields
+         NoahmpIO_sub%T_PHY(1,1,1) = T_ML
+         NoahmpIO_sub%U_PHY(1,1,1) = U_ML
+         NoahmpIO_sub%V_PHY(1,1,1) = V_ML
+         NoahmpIO_sub%QV_CURR(1,1,1) = Q_ML / (1.0 - Q_ML)
+         NoahmpIO_sub%P8W(1,1,1) = P8W3D(I,KTS,J)
+         NoahmpIO_sub%P8W(1,2,1) = P8W3D(I,KTS+1,J)
+         NoahmpIO_sub%SWDOWN(1,1) = SWDN
+         NoahmpIO_sub%GLW(1,1) = LWDN
+         NoahmpIO_sub%TMN(1,1) = TBOT
+         NoahmpIO_sub%RAINBL(1,1) = PRECIP_IN(I,J)
+         NoahmpIO_sub%SR(1,1) = SR(I,J)
+
+         ! Precipitation partitioning
+         IF (PRESENT(MP_RAINC) .AND. PRESENT(MP_RAINNC) .AND.    &
+             PRESENT(MP_SHCV) .AND. PRESENT(MP_SNOW) .AND.       &
+             PRESENT(MP_GRAUP) .AND. PRESENT(MP_HAIL)) THEN
+           NoahmpIO_sub%MP_RAINC(1,1)  = MP_RAINC(I,J)
+           NoahmpIO_sub%MP_RAINNC(1,1) = MP_RAINNC(I,J)
+           NoahmpIO_sub%MP_SHCV(1,1)   = MP_SHCV(I,J)
+           NoahmpIO_sub%MP_SNOW(1,1)   = MP_SNOW(I,J)
+           NoahmpIO_sub%MP_GRAUP(1,1)  = MP_GRAUP(I,J)
+           NoahmpIO_sub%MP_HAIL(1,1)   = MP_HAIL(I,J)
+         ELSE
+           NoahmpIO_sub%MP_RAINC(1,1)  = 0.0
+           NoahmpIO_sub%MP_RAINNC(1,1) = PRECIP_IN(I,J)
+           NoahmpIO_sub%MP_SHCV(1,1)   = 0.0
+           NoahmpIO_sub%MP_SNOW(1,1)   = SR(I,J) * PRECIP_IN(I,J)
+           NoahmpIO_sub%MP_GRAUP(1,1)  = 0.0
+           NoahmpIO_sub%MP_HAIL(1,1)   = 0.0
+         ENDIF
+
+         ! Radiation fractions (not available in old interface)
+         ! Old NOAHMP_SFLX uses 0.7 direct / 0.3 diffuse, 0.5 vis / 0.5 nir
+         NoahmpIO_sub%RadSwDirFrac(1,1) = 0.7
+         NoahmpIO_sub%RadSwVisFrac(1,1) = 0.5
+
+         ! State variables (INOUT)
+         NoahmpIO_sub%ISNOWXY(1,1)  = ISNOW
+         NoahmpIO_sub%TVXY(1,1)     = TV
+         NoahmpIO_sub%TGXY(1,1)     = TG
+         NoahmpIO_sub%CANLIQXY(1,1) = CANLIQ
+         NoahmpIO_sub%CANICEXY(1,1) = CANICE
+         NoahmpIO_sub%EAHXY(1,1)    = EAH
+         NoahmpIO_sub%TAHXY(1,1)    = TAH
+         NoahmpIO_sub%CMXY(1,1)     = CM
+         NoahmpIO_sub%CHXY(1,1)     = CH
+         NoahmpIO_sub%FWETXY(1,1)   = FWET
+         NoahmpIO_sub%SNEQVOXY(1,1) = SNEQVO
+         NoahmpIO_sub%ALBOLDXY(1,1) = ALBOLD
+         NoahmpIO_sub%QSNOWXY(1,1)  = QSNOW
+         NoahmpIO_sub%QRAINXY(1,1)  = QRAIN
+         NoahmpIO_sub%WSLAKEXY(1,1) = WSLAKE
+         NoahmpIO_sub%ZWTXY(1,1)    = ZWT
+         NoahmpIO_sub%WAXY(1,1)     = WA
+         NoahmpIO_sub%WTXY(1,1)     = WT
+         NoahmpIO_sub%SMCWTDXY(1,1) = SMCWTD
+         NoahmpIO_sub%SNOW(1,1)     = SWE
+         NoahmpIO_sub%SNOWH(1,1)    = SNDPTH
+         NoahmpIO_sub%QSFC(1,1)     = QSFC1D
+         NoahmpIO_sub%LAI(1,1)      = PLAI
+         NoahmpIO_sub%XSAIXY(1,1)   = PSAI
+         NoahmpIO_sub%TAUSSXY(1,1)  = TAUSS
+
+         ! Snow/soil arrays
+         NoahmpIO_sub%TSNOXY(1,-NSNOW+1:0,1)      = STC(-NSNOW+1:0)
+         NoahmpIO_sub%TSLB(1,1:NSOIL,1)            = STC(1:NSOIL)
+         NoahmpIO_sub%ZSNSOXY(1,-NSNOW+1:NSOIL,1)  = ZSNSO(-NSNOW+1:NSOIL)
+         NoahmpIO_sub%SNICEXY(1,-NSNOW+1:0,1)      = SNICE(-NSNOW+1:0)
+         NoahmpIO_sub%SNLIQXY(1,-NSNOW+1:0,1)      = SNLIQ(-NSNOW+1:0)
+         NoahmpIO_sub%SH2O(1,1:NSOIL,1)            = SMH2O(1:NSOIL)
+         NoahmpIO_sub%SMOIS(1,1:NSOIL,1)           = SMC(1:NSOIL)
+         NoahmpIO_sub%SMOISEQ(1,1:NSOIL,1)         = SMCEQ(1:NSOIL)
+
+         ! Biochem state
+         NoahmpIO_sub%LFMASSXY(1,1) = LFMASS
+         NoahmpIO_sub%RTMASSXY(1,1) = RTMASS
+         NoahmpIO_sub%STMASSXY(1,1) = STMASS
+         NoahmpIO_sub%WOODXY(1,1)   = WOOD
+         NoahmpIO_sub%STBLCPXY(1,1) = STBLCP
+         NoahmpIO_sub%FASTCPXY(1,1) = FASTCP
+         NoahmpIO_sub%GRAINXY(1,1)  = GRAIN
+         NoahmpIO_sub%GDDXY(1,1)    = GDD
+         NoahmpIO_sub%PGSXY(1,1)    = PGS
+
+         ! Soil albedo init (recomputed by physics each timestep)
+         NoahmpIO_sub%ALBSOILDIRXY(1,1:2,1) = 0.0
+         NoahmpIO_sub%ALBSOILDIFXY(1,1:2,1) = 0.0
+
+         ! Accumulators (zero per call with soil_update_steps=1)
+         NoahmpIO_sub%ACC_SSOILXY(1,1)        = 0.0
+         NoahmpIO_sub%ACC_QSEVAXY(1,1)        = 0.0
+         NoahmpIO_sub%ACC_QINSURXY(1,1)       = 0.0
+         NoahmpIO_sub%ACC_DWATERXY(1,1)       = 0.0
+         NoahmpIO_sub%ACC_PRCPXY(1,1)         = 0.0
+         NoahmpIO_sub%ACC_ECANXY(1,1)         = 0.0
+         NoahmpIO_sub%ACC_ETRANXY(1,1)        = 0.0
+         NoahmpIO_sub%ACC_EDIRXY(1,1)         = 0.0
+         NoahmpIO_sub%ACC_ETRANIXY(1,1:NSOIL,1) = 0.0
+         NoahmpIO_sub%ACC_GLAFLWXY(1,1)       = 0.0
+         NoahmpIO_sub%SFCRUNOFF(1,1)           = 0.0
+         NoahmpIO_sub%UDRUNOFF(1,1)            = 0.0
+
 #ifdef WRF_HYDRO
-            , sfcheadrt(i,j)                               &
+         NoahmpIO_sub%sfcheadrt(1,1)  = sfcheadrt(I,J)
+         NoahmpIO_sub%ZWATBLE2D(1,1)  = 0.0
 #endif
-            )            ! OUT :
+
+         ! Call submodule Init+Transfer chain and NoahmpMain
+         call ConfigVarInitDefault(noahmp_col)
+         call ConfigVarInTransfer(noahmp_col, NoahmpIO_sub)
+
+         call ForcingVarInitDefault(noahmp_col)
+         call ForcingVarInTransfer(noahmp_col, NoahmpIO_sub)
+
+         call EnergyVarInitDefault(noahmp_col)
+         call EnergyVarInTransfer(noahmp_col, NoahmpIO_sub)
+
+         call WaterVarInitDefault(noahmp_col)
+         call WaterVarInTransfer(noahmp_col, NoahmpIO_sub)
+
+         call BiochemVarInitDefault(noahmp_col)
+         call BiochemVarInTransfer(noahmp_col, NoahmpIO_sub)
+
+         call NoahmpMain(noahmp_col)
+
+         ! ---- Extract outputs from noahmp_col ----
+         ! Energy fluxes
+         FSA    = noahmp_col%energy%flux%RadSwAbsSfc
+         FSR    = noahmp_col%energy%flux%RadSwReflSfc
+         FIRA   = noahmp_col%energy%flux%RadLwNetSfc
+         FSH    = noahmp_col%energy%flux%HeatSensibleSfc
+         SSOIL  = noahmp_col%energy%flux%HeatGroundTot
+         FCEV   = noahmp_col%energy%flux%HeatLatentCanopy
+         FGEV   = noahmp_col%energy%flux%HeatLatentGrd
+         FCTR   = noahmp_col%energy%flux%HeatLatentTransp
+         SAV    = noahmp_col%energy%flux%RadSwAbsVeg
+         SAG    = noahmp_col%energy%flux%RadSwAbsGrd
+         IRC    = noahmp_col%energy%flux%RadLwNetCanopy
+         IRG    = noahmp_col%energy%flux%RadLwNetVegGrd
+         IRB    = noahmp_col%energy%flux%RadLwNetBareGrd
+         SHC    = noahmp_col%energy%flux%HeatSensibleCanopy
+         SHG    = noahmp_col%energy%flux%HeatSensibleVegGrd
+         SHB    = noahmp_col%energy%flux%HeatSensibleBareGrd
+         EVG    = noahmp_col%energy%flux%HeatLatentVegGrd
+         EVB    = noahmp_col%energy%flux%HeatLatentBareGrd
+         GHV    = noahmp_col%energy%flux%HeatGroundVegGrd
+         GHB    = noahmp_col%energy%flux%HeatGroundBareGrd
+         TR     = noahmp_col%energy%flux%HeatLatentCanTransp
+         EVC    = noahmp_col%energy%flux%HeatLatentCanEvap
+         APAR   = noahmp_col%energy%flux%RadPhotoActAbsCan
+         PAHV   = noahmp_col%energy%flux%HeatPrecipAdvCanopy
+         PAHG   = noahmp_col%energy%flux%HeatPrecipAdvVegGrd
+         PAHB   = noahmp_col%energy%flux%HeatPrecipAdvBareGrd
+         PAH    = noahmp_col%energy%flux%HeatPrecipAdvSfc
+
+         ! Energy states
+         TRAD   = noahmp_col%energy%state%TemperatureRadSfc
+         EMISSI = noahmp_col%energy%state%EmissivitySfc
+         QSFC1D = noahmp_col%energy%state%SpecHumiditySfcMean
+         TV     = noahmp_col%energy%state%TemperatureCanopy
+         TG     = noahmp_col%energy%state%TemperatureGrd
+         EAH    = noahmp_col%energy%state%PressureVaporCanAir
+         TAH    = noahmp_col%energy%state%TemperatureCanopyAir
+         CM     = noahmp_col%energy%state%ExchCoeffMomSfc
+         CH     = noahmp_col%energy%state%ExchCoeffShSfc
+         ALBOLD = noahmp_col%energy%state%AlbedoSnowPrev
+         PLAI   = noahmp_col%energy%state%LeafAreaIndex
+         PSAI   = noahmp_col%energy%state%StemAreaIndex
+         TAUSS  = noahmp_col%energy%state%SnowAgeNondim
+         Z0WRF  = noahmp_col%energy%state%RoughLenMomSfcToAtm
+         T2MV   = noahmp_col%energy%state%TemperatureAir2mVeg
+         T2MB   = noahmp_col%energy%state%TemperatureAir2mBare
+         Q2MV   = noahmp_col%energy%state%SpecHumidity2mVeg
+         Q2MB   = noahmp_col%energy%state%SpecHumidity2mBare
+         TGV    = noahmp_col%energy%state%TemperatureGrdVeg
+         TGB    = noahmp_col%energy%state%TemperatureGrdBare
+         CHV    = noahmp_col%energy%state%ExchCoeffShAbvCan
+         CHB    = noahmp_col%energy%state%ExchCoeffShBare
+         CHLEAF = noahmp_col%energy%state%ExchCoeffShLeaf
+         CHUC   = noahmp_col%energy%state%ExchCoeffShUndCan
+         CHV2   = noahmp_col%energy%state%ExchCoeffSh2mVeg
+         CHB2   = noahmp_col%energy%state%ExchCoeffSh2mBare
+         RSSUN  = noahmp_col%energy%state%ResistanceStomataSunlit
+         RSSHA  = noahmp_col%energy%state%ResistanceStomataShade
+         BGAP   = noahmp_col%energy%state%GapBtwCanopy
+         WGAP   = noahmp_col%energy%state%GapInCanopy
+         FVEGMP = noahmp_col%energy%state%VegFrac
+         SALB   = noahmp_col%energy%state%AlbedoSfc
+         ALBSND(1:2) = noahmp_col%energy%state%AlbedoSnowDir(1:2)
+         ALBSNI(1:2) = noahmp_col%energy%state%AlbedoSnowDif(1:2)
+
+         ! Snow/soil temperatures
+         STC(-NSNOW+1:0)  = noahmp_col%energy%state%TemperatureSoilSnow(-NSNOW+1:0)
+         STC(1:NSOIL)     = noahmp_col%energy%state%TemperatureSoilSnow(1:NSOIL)
+
+         ! Water fluxes (RunoffSurface is mm/dt_soil, convert to mm/s)
+         RUNSF  = noahmp_col%water%flux%RunoffSurface / DT
+         RUNSB  = noahmp_col%water%flux%RunoffSubsurface / DT
+         ECAN   = noahmp_col%water%flux%EvapCanopyNet
+         ETRAN  = noahmp_col%water%flux%Transpiration
+         ESOIL  = noahmp_col%water%flux%EvapGroundNet
+         QSNOW  = noahmp_col%water%flux%SnowfallGround
+         QRAIN  = noahmp_col%water%flux%RainfallGround
+         QSNBOT = noahmp_col%water%flux%SnowBotOutflow
+         FPICE  = noahmp_col%water%state%FrozenPrecipFrac
+         PONDING  = noahmp_col%water%state%PondSfcThinSnwTrans + &
+                    noahmp_col%water%state%PondSfcThinSnwComb  + &
+                    noahmp_col%water%state%PondSfcThinSnwMelt
+         PONDING1 = 0.0
+         PONDING2 = 0.0
+         FSNO   = noahmp_col%water%state%SnowCoverFrac
+
+         ! Water states
+         SWE    = noahmp_col%water%state%SnowWaterEquiv
+         SNDPTH = noahmp_col%water%state%SnowDepth
+         CANLIQ = noahmp_col%water%state%CanopyLiqWater
+         CANICE = noahmp_col%water%state%CanopyIce
+         FWET   = noahmp_col%water%state%CanopyWetFrac
+         SNEQVO = noahmp_col%water%state%SnowWaterEquivPrev
+         WSLAKE = noahmp_col%water%state%WaterStorageLake
+         ZWT    = noahmp_col%water%state%WaterTableDepth
+         WA     = noahmp_col%water%state%WaterStorageAquifer
+         WT     = noahmp_col%water%state%WaterStorageSoilAqf
+         SMCWTD = noahmp_col%water%state%SoilMoistureToWT
+         DEEPRECH = noahmp_col%water%state%RechargeGwDeepWT
+         RECH   = noahmp_col%water%state%RechargeGwShallowWT
+         ISNOW  = noahmp_col%config%domain%NumSnowLayerNeg
+         SMC(1:NSOIL)       = noahmp_col%water%state%SoilMoisture(1:NSOIL)
+         SMH2O(1:NSOIL)     = noahmp_col%water%state%SoilLiqWater(1:NSOIL)
+         SNICE(-NSNOW+1:0)  = noahmp_col%water%state%SnowIce(-NSNOW+1:0)
+         SNLIQ(-NSNOW+1:0)  = noahmp_col%water%state%SnowLiqWater(-NSNOW+1:0)
+         ZSNSO(-NSNOW+1:NSOIL) = noahmp_col%config%domain%DepthSnowSoilLayer(-NSNOW+1:NSOIL)
+
+         ! Biochem states
+         LFMASS = noahmp_col%biochem%state%LeafMass
+         RTMASS = noahmp_col%biochem%state%RootMass
+         STMASS = noahmp_col%biochem%state%StemMass
+         WOOD   = noahmp_col%biochem%state%WoodMass
+         STBLCP = noahmp_col%biochem%state%CarbonMassDeepSoil
+         FASTCP = noahmp_col%biochem%state%CarbonMassShallowSoil
+         GRAIN  = noahmp_col%biochem%state%GrainMass
+         GDD    = noahmp_col%biochem%state%GrowDegreeDay
+         PGS    = noahmp_col%biochem%state%PlantGrowStage
+         NEE    = noahmp_col%biochem%flux%NetEcoExchange
+         GPP    = noahmp_col%biochem%flux%GrossPriProduction
+         NPP    = noahmp_col%biochem%flux%NetPriProductionTot
+         PSN    = noahmp_col%biochem%flux%PhotosynTotal
+! ==================== End submodule call ====================
 
             QFX(I,J) = ECAN + ESOIL + ETRAN
             LH       (I,J)                = FCEV + FGEV + FCTR
@@ -2001,6 +2313,8 @@ SUBROUTINE PEDOTRANSFER_SR2006(nsoil,sand,clay,orgm,parameters)
     character(len=4)  :: MMINSL
     character(len=*), intent(in) :: MMINLU
     MMINSL='STAS'
+
+    saved_landuse = MMINLU
 
     call read_mp_veg_parameters(trim(MMINLU))
     call read_mp_soil_parameters()

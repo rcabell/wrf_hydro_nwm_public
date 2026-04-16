@@ -123,6 +123,7 @@ if (HYDRO_LSM MATCHES "NoahMP")
                 hydro_driver
                 noahmp_util
                 noahmp_phys
+                noahmp_submodule
                 noahmp_data
                 hydro_noahmp_cpl
                 ${NETCDF_LIBRARIES}
@@ -155,6 +156,7 @@ if (HYDRO_LSM MATCHES "NoahMP")
                 COMMAND cp ${PROJECT_SOURCE_DIR}/src/template/HYDRO/CHANPARM.TBL ${CMAKE_BINARY_DIR}/Run
                 COMMAND cp ${PROJECT_SOURCE_DIR}/src/template/HYDRO/HYDRO.TBL ${CMAKE_BINARY_DIR}/Run
                 COMMAND cp ${PROJECT_SOURCE_DIR}/src/Land_models/NoahMP/run/*.TBL ${CMAKE_BINARY_DIR}/Run
+                COMMAND cp ${PROJECT_SOURCE_DIR}/src/Land_models/NoahMP/noahmp/parameters/NoahmpTable.TBL ${CMAKE_BINARY_DIR}/Run
                 # copy namelists
                 COMMAND bash -c "${BASH_CP_HRLDAS_NML}"
                 COMMAND bash -c "${BASH_CP_HYDRO_NML}"
