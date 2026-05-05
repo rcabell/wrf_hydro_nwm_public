@@ -637,18 +637,25 @@ CONTAINS
 		     IOPT_RSF  ,IOPT_SOIL ,IOPT_PEDO ,IOPT_CROP, IOPT_IMPERV )
 
 ! ---------- Initialize submodule NoahmpIO bridge (once) ----------
+    ! The submodule is driven one column at a time via a 1x1 NoahmpIO bridge.
+    ! All per-call assignments use (1,1)/(1,:,1) indices, so the bridge arrays
+    ! only need to be sized 1x1. Setting these to the full WRF-Hydro domain
+    ! (ids:ide, jds:jde) would cause NoahmpIOVarInitDefault to allocate ~200
+    ! full-domain arrays on every MPI rank, which exhausts memory on large
+    ! domains (e.g. CONUS) and produces heap corruption / NaN output.
     if (.not. submodule_initialized) then
-       NoahmpIO_sub%XSTART = ids
-       NoahmpIO_sub%XEND   = ide
-       NoahmpIO_sub%YSTART = jds
-       NoahmpIO_sub%YEND   = jde
-       NoahmpIO_sub%KMS    = kms
-       NoahmpIO_sub%KME    = kme
-       NoahmpIO_sub%KTS    = kts
-       NoahmpIO_sub%KTE    = kte
+       NoahmpIO_sub%XSTART = 1
+       NoahmpIO_sub%XEND   = 1
+       NoahmpIO_sub%YSTART = 1
+       NoahmpIO_sub%YEND   = 1
+       NoahmpIO_sub%KDS    = 1
+       NoahmpIO_sub%KDE    = 2                     ! P8W needs 2 interface levels (surface + next)
+       NoahmpIO_sub%KMS    = 1
+       NoahmpIO_sub%KME    = 1
+       NoahmpIO_sub%KTS    = 1
+       NoahmpIO_sub%KTE    = 1
        NoahmpIO_sub%NSOIL  = NSOIL
        NoahmpIO_sub%NSNOW  = NSNOW
-       NoahmpIO_sub%NUMRAD = 2
        NoahmpIO_sub%LLANDUSE = saved_landuse
        call NoahmpIOVarInitDefault(NoahmpIO_sub)
        call NoahmpReadTable(NoahmpIO_sub)
@@ -703,10 +710,11 @@ CONTAINS
     NoahmpIO_sub%IOPT_SOIL    = IOPT_SOIL
     NoahmpIO_sub%IOPT_PEDO    = IOPT_PEDO
     NoahmpIO_sub%IOPT_CROP    = IOPT_CROP
-    NoahmpIO_sub%IOPT_TKSNO   = 0
-    NoahmpIO_sub%IOPT_COMPACT = 1
-    NoahmpIO_sub%IOPT_SCF     = 1
-    NoahmpIO_sub%IOPT_WETLAND = 0
+    ! IOPT_TKSNO must be in 1..5; the refactored SnowThermalProperty leaves
+    ! ThermConductSnow at its undefined_real init value (~3.4e38) otherwise,
+    ! which propagates as NaN through GrdHeatCoeff into the ground-temperature
+    ! N-R solve. 1 = Stieglitz(Yen,1965), the documented default.
+    NoahmpIO_sub%IOPT_TKSNO   = 1
     NoahmpIO_sub%IOPT_TDRN    = 0
     NoahmpIO_sub%IOPT_IRR     = 0
     NoahmpIO_sub%IOPT_IRRM    = 0
@@ -766,6 +774,11 @@ CONTAINS
        SOILTYP= ISLTYP(I,J)                           ! soil type
        FVEG   = VEGFRA(I,J)/100.                      ! vegetation fraction [0-1]
        FVGMAX = VEGMAX (I,J)/100.                     ! Vegetation fraction annual max [0-1]
+       ! Guard against netCDF _FillValue (~9.97e36) or NaN in geogrid VEGFRA/VEGMAX:
+       ! the refactored submodule propagates these straight into the canopy energy
+       ! balance and produces NaN TG. Treat missing values as bare (FVEG=0).
+       if ( (FVEG /= FVEG) .or. (FVEG > 1.0) .or. (FVEG < 0.0) ) FVEG = 0.0
+       if ( (FVGMAX /= FVGMAX) .or. (FVGMAX > 1.0) .or. (FVGMAX < 0.0) ) FVGMAX = 0.0
        TBOT = TMN(I,J)                                ! Fixed deep soil temperature for land
        T_ML   = T3D(I,1,J)                            ! temperature defined at intermediate level [K]
        Q_ML   = QV3D(I,1,J)/(1.0+QV3D(I,1,J))         ! convert from mixing ratio to specific humidity [kg/kg]
@@ -1397,11 +1410,6 @@ CONTAINS
            NoahmpIO_sub%MP_HAIL(1,1)   = 0.0
          ENDIF
 
-         ! Radiation fractions (not available in old interface)
-         ! Old NOAHMP_SFLX uses 0.7 direct / 0.3 diffuse, 0.5 vis / 0.5 nir
-         NoahmpIO_sub%RadSwDirFrac(1,1) = 0.7
-         NoahmpIO_sub%RadSwVisFrac(1,1) = 0.5
-
          ! State variables (INOUT)
          NoahmpIO_sub%ISNOWXY(1,1)  = ISNOW
          NoahmpIO_sub%TVXY(1,1)     = TV
@@ -1450,10 +1458,6 @@ CONTAINS
          NoahmpIO_sub%GDDXY(1,1)    = GDD
          NoahmpIO_sub%PGSXY(1,1)    = PGS
 
-         ! Soil albedo init (recomputed by physics each timestep)
-         NoahmpIO_sub%ALBSOILDIRXY(1,1:2,1) = 0.0
-         NoahmpIO_sub%ALBSOILDIFXY(1,1:2,1) = 0.0
-
          ! Accumulators (zero per call with soil_update_steps=1)
          NoahmpIO_sub%ACC_SSOILXY(1,1)        = 0.0
          NoahmpIO_sub%ACC_QSEVAXY(1,1)        = 0.0
@@ -1464,7 +1468,6 @@ CONTAINS
          NoahmpIO_sub%ACC_ETRANXY(1,1)        = 0.0
          NoahmpIO_sub%ACC_EDIRXY(1,1)         = 0.0
          NoahmpIO_sub%ACC_ETRANIXY(1,1:NSOIL,1) = 0.0
-         NoahmpIO_sub%ACC_GLAFLWXY(1,1)       = 0.0
          NoahmpIO_sub%SFCRUNOFF(1,1)           = 0.0
          NoahmpIO_sub%UDRUNOFF(1,1)            = 0.0
 
@@ -1489,7 +1492,102 @@ CONTAINS
          call BiochemVarInitDefault(noahmp_col)
          call BiochemVarInTransfer(noahmp_col, NoahmpIO_sub)
 
+         noahmp_col%config%domain%GridIndexI = I
+         noahmp_col%config%domain%GridIndexJ = J
+
+         ! Forward spatial DOMAIN/soilproperties values into submodule param fields.
+         ! The submodule's *VarInTransfer routines populate these from SOILPARM/GENPARM
+         ! table lookups by default; we override here with the per-cell spatial values
+         ! the bridge already loads, matching the legacy SPATIAL_SOIL behavior.
+         noahmp_col%water%param%SoilDrainSlope       = SLOPE_2D(I,J)
+         noahmp_col%water%param%SoilConductivityRef  = REFDK_2D(I,J)
+         noahmp_col%water%param%SoilInfilFacRef      = REFKDT_2D(I,J)
+         noahmp_col%water%param%SnowLiqHoldCap       = SSI_2D(I,J)
+         noahmp_col%water%param%SnowLiqReleaseFac    = SNOWRETFAC_2D(I,J)
+         noahmp_col%water%param%SnowMeltFac          = MFSNO_2D(I,J)
+         noahmp_col%water%param%TensionWatDistrInfl  = AXAJ_2D(I,J)
+         noahmp_col%water%param%TensionWatDistrShp   = BXAJ_2D(I,J)
+         noahmp_col%water%param%FreeWatDistrShp      = XXAJ_2D(I,J)
+         ! Energy params
+         noahmp_col%energy%param%SnowAgeFacBats      = TAU0_2D(I,J)
+         noahmp_col%energy%param%ResistanceSoilExp   = RSURFEXP_2D(I,J)
+         noahmp_col%energy%param%ResistanceSnowSfc   = RSURFSNOW_2D(I,J)
+         noahmp_col%energy%param%HeightCanopyTop     = HVT_2D(I,J)
+         noahmp_col%energy%param%CanopyWindExtFac    = CWPVT_2D(I,J)
+         ! Biochem params
+         noahmp_col%biochem%param%CarboxylRateMax25C    = VCMX25_2D(I,J)
+         noahmp_col%biochem%param%SlopeConductToPhotosyn = MP_2D(I,J)
+         ! Per-layer spatial soil hydraulic params (from soilproperties NetCDF, equivalent to SPATIAL_SOIL)
+         noahmp_col%water%param%SoilExpCoeffB           = BEXP_3D  (I,1:NSOIL,J)
+         noahmp_col%water%param%SoilMoistureDry         = SMCDRY_3D(I,1:NSOIL,J)
+         noahmp_col%water%param%SoilMoistureWilt        = SMCWLT_3D(I,1:NSOIL,J)
+         noahmp_col%water%param%SoilMoistureFieldCap    = SMCREF_3D(I,1:NSOIL,J)
+         noahmp_col%water%param%SoilMoistureSat         = SMCMAX_3D(I,1:NSOIL,J)
+         noahmp_col%water%param%SoilWatConductivitySat  = DKSAT_3D (I,1:NSOIL,J)
+         noahmp_col%water%param%SoilWatDiffusivitySat   = DWSAT_3D (I,1:NSOIL,J)
+         noahmp_col%water%param%SoilMatPotentialSat     = PSISAT_3D(I,1:NSOIL,J)
+         noahmp_col%energy%param%SoilQuartzFrac         = QUARTZ_3D(I,1:NSOIL,J)
+
+#ifdef NOAHMP_LEGACY_PHYSICS
+         ! LEGACY-REPRODUCTION OVERRIDES -- artificial adjustments to bit-reproduce
+         ! the legacy NWM NoahMP results under the bridge. Drop these when adopting
+         ! the refactored physics.
+         !
+         ! (1) Snow cover fraction: refactored SnowCoverGroundNiu07Mod replaced the
+         ! legacy hard-coded "2.5*Z0" denominator in the Niu-Yang FSNO formula with
+         ! the single MPTABLE scalar SCFFAC, retuned per He et al. 2021 (JGR)
+         ! against SNOTEL/MODIS. In legacy module_sf_noahmplsm.F the Z0 used here
+         ! is a hardcoded PARAMETER = 0.002 m (bare-soil under canopy), NOT the
+         ! vegtype-dependent Z0MVT. Force SnowCoverFac = 2.5*0.002 = 0.005.
+         noahmp_col%water%param%SnowCoverFac = 0.005
+         !
+         ! (2) Snow viscosity coefficient: refactored MPTABLE sets
+         ! ETA0_SNOWCOMPACT = 1.33e+6 (He et al. 2021 SNOTEL retune); legacy
+         ! COMPACT hardcodes ETA0 = 0.8e+6. Restore the legacy value so overburden
+         ! compaction rate matches. The companion clamp on snow density (50/500
+         ! kg/m3) added in SnowpackCompactionMod is also disabled under this flag.
+         noahmp_col%water%param%SnowViscosityCoeff = 0.8e+6
+         !
+         ! (3) Maximum snow cover fraction (legacy SCAMAX): refactored
+         ! SnowCoverGroundNiu07 dropped the SCAMAX multiplier from the FSNO
+         ! formula; restore it here from the per-cell SPATIAL_SOIL field
+         ! SCAMAX_2D so that legacy FSNO = SCAMAX * tanh(...) is reproduced.
+         ! Consumed by SnowCoverGroundNiu07Mod under the same flag.
+         noahmp_col%water%param%SnowCoverFracMax = SCAMAX_2D(I,J)
+         !
+         ! (4) Snow emissivity: legacy NoahMP hard-coded snow emissivity to 1.0
+         ! inline in the EMG = EG*(1-FSNO) + 1.0*FSNO blending; the He-et-al
+         ! refactor exposed this as MPTABLE param SNOW_EMIS = 0.95. Restore 1.0
+         ! for bit-reproduction. Consumed by SurfaceEmissivityMod under both
+         ! soil and ice paths, so this also covers the glacier emissivity path.
+         noahmp_col%energy%param%EmissivitySnow = 1.0
+#endif
+
          call NoahmpMain(noahmp_col)
+
+         ! >>> SNOWDIAG: per-step dump at melt-timing outlier cell to localize
+         ! where the residual snow refactor drift originates.
+         if ( I == 931 .and. J == 2936 ) then
+            write(*,'(A,2I6,16(1X,A,ES13.5))') &
+              'SNOWDIAG_HYB I,J=', I, J, &
+              'TG=',    noahmp_col%energy%state%TemperatureGrd, &
+              'STC0=',  noahmp_col%energy%state%TemperatureSoilSnow(0), &
+              'STCm1=', noahmp_col%energy%state%TemperatureSoilSnow(-1), &
+              'STCm2=', noahmp_col%energy%state%TemperatureSoilSnow(-2), &
+              'STCs1=', noahmp_col%energy%state%TemperatureSoilSnow(1), &
+              'SAG=',   noahmp_col%energy%flux%RadSwAbsGrd, &
+              'GHV=',   noahmp_col%energy%flux%HeatGroundVegGrd, &
+              'GHB=',   noahmp_col%energy%flux%HeatGroundBareGrd, &
+              'SNICE0=', noahmp_col%water%state%SnowIce(0), &
+              'SNLIQ0=', noahmp_col%water%state%SnowLiqWater(0), &
+              'SNEQV=',  noahmp_col%water%state%SnowWaterEquiv, &
+              'SNEQVO=', noahmp_col%water%state%SnowWaterEquivPrev, &
+              'SNOWH=',  noahmp_col%water%state%SnowDepth, &
+              'FSNO=',   noahmp_col%water%state%SnowCoverFrac, &
+              'ISNOW=',  real(noahmp_col%config%domain%NumSnowLayerNeg), &
+              'QMELT=',  noahmp_col%water%flux%MeltGroundSnow
+         endif
+         ! <<< SNOWDIAG
 
          ! ---- Extract outputs from noahmp_col ----
          ! Energy fluxes
@@ -1527,6 +1625,7 @@ CONTAINS
          QSFC1D = noahmp_col%energy%state%SpecHumiditySfcMean
          TV     = noahmp_col%energy%state%TemperatureCanopy
          TG     = noahmp_col%energy%state%TemperatureGrd
+
          EAH    = noahmp_col%energy%state%PressureVaporCanAir
          TAH    = noahmp_col%energy%state%TemperatureCanopyAir
          CM     = noahmp_col%energy%state%ExchCoeffMomSfc
