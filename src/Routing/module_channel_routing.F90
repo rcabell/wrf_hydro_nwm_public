@@ -25,16 +25,17 @@ real function MUSKING(idx,qup,quc,qdp,dt,Km,X)
 implicit none
 
 !--local variables
-real    :: C1, C2, C3
-real    :: Km         !K travel time in hrs in reach
-real    :: X          !weighting factors 0<=X<=0.5
-real    :: dt         !routing period in hrs
-real    :: avgbf      !average base flow for initial condition
-real    :: qup        !inflow from previous timestep
-real    :: quc        !inflow  of current timestep
-real    :: qdp        !outflow of previous timestep
+real, intent(in) :: Km         !K travel time in hrs in reach
+real, intent(in) :: X          !weighting factors 0<=X<=0.5
+real, intent(in) :: dt         !routing period in hrs
+real, intent(in) :: qup        !inflow from previous timestep
+real, intent(in) :: quc        !inflow  of current timestep
+real, intent(in) :: qdp        !outflow of previous timestep
+integer, intent(in) :: idx        ! index
+
 real    :: dth        !timestep in hours
-integer :: idx        ! index
+real    :: C1, C2, C3
+! real    :: avgbf      !average base flow for initial condition
 
 dth = dt/3600.    !hours in timestep
 C1 = (dth - 2.0 *Km*X)/(2.0*Km*(1.0-X)+dth)
@@ -1321,8 +1322,8 @@ end subroutine drive_CHANNEL
 ! ----------------------------------------------------------------
 
 !-=======================================
-     REAL FUNCTION AREAf(AREA,Bw,h,z)
-     REAL :: AREA, Bw, z, h
+     REAL PURE FUNCTION AREAf(AREA,Bw,h,z)
+     REAL, intent(in) :: AREA, Bw, z, h
        AREAf = (Bw+z*h)*h-AREA       !-- Flow area
      END FUNCTION AREAf
 
@@ -1469,8 +1470,8 @@ end subroutine drive_CHANNEL
      END FUNCTION CRITICALDEPTH
 
 
-     REAL FUNCTION SGNf(val)  !-- function to return the sign of a number
-     REAL:: val
+     REAL PURE FUNCTION SGNf(val)  !-- function to return the sign of a number
+     REAL, INTENT(IN) :: val
 
      if (val .lt. 0) then
        SGNf= -1.

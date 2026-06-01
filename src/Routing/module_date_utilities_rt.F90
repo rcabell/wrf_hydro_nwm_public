@@ -857,7 +857,7 @@ contains
   end subroutine geth_idts
 
 
-  integer function nfeb(year)
+  integer pure function nfeb(year)
     !
     ! Compute the number of days in February for the given year.
     !

@@ -61,8 +61,8 @@ contains
 ! 8: i-1, j+1
    real function get_dy(i,j,v,ix,jx)
       ! south north
-       integer :: i,j,ix,jx
-       real,dimension(ix,jx,9) :: v
+       integer, intent(in) :: i,j,ix,jx
+       real,dimension(ix,jx,9), intent(in) :: v
        if( v(i,j,1) .le. 0) then
           get_dy = v(i,j,5)
        else if( v(i,j,5) .le. 0) then
@@ -75,8 +75,8 @@ contains
 
    real function get_dx(i,j,v,ix,jx)
       ! east-west
-       integer :: i,j, ix,jx
-       real,dimension(ix,jx,9) :: v
+       integer, intent(in) :: i,j, ix,jx
+       real,dimension(ix,jx,9), intent(in) :: v
        if( v(i,j,3) .le. 0) then
           get_dx = v(i,j,7)
        else if( v(i,j,7) .le. 0) then
@@ -87,10 +87,10 @@ contains
        return
    end function get_dx
 
-   real function get_ll_d(lat1_in, lat2_in, lon1_in, lon2_in)
+   real pure function get_ll_d(lat1_in, lat2_in, lon1_in, lon2_in)
      implicit none
      real:: lat1, lat2, lon1, lon2
-     real:: lat1_in, lat2_in, lon1_in, lon2_in
+     real, intent(in) :: lat1_in, lat2_in, lon1_in, lon2_in
      real::  r, pai, a,c, dlat, dlon, b1,b2
      pai = 3.14159
      lat1 = lat1_in * pai/180
@@ -109,10 +109,10 @@ contains
 
    end function get_ll_d
 
-   real function get_ll_d_tmp(lat1_in, lat2_in, lon1_in, lon2_in)
+   real pure function get_ll_d_tmp(lat1_in, lat2_in, lon1_in, lon2_in)
      implicit none
      real:: lat1, lat2, lon1, lon2
-     real:: lat1_in, lat2_in, lon1_in, lon2_in
+     real, intent(in) :: lat1_in, lat2_in, lon1_in, lon2_in
      real::  r, pai
      pai = 3.14159
      lat1 = lat1_in * pai/180
@@ -342,7 +342,7 @@ contains
       jx = global_ny
       call write_IO_int(rt_domain(did)%GWSUBBASMSK,mask)
       do k = 1,  9
-         call write_IO_real(rt_domain(did)%dist_lsm(:,:,k),dist_lsm(:,:,k)) 
+         call write_IO_real(rt_domain(did)%dist_lsm(:,:,k),dist_lsm(:,:,k))
       end do
 #else
       ix = rt_domain(did)%ix
