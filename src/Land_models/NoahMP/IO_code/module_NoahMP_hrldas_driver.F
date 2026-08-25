@@ -1238,7 +1238,11 @@ module module_NoahMP_hrldas_driver
 !------------------------------------------------------------------------
 
   if (noah_lsm%runoff_option == 5) then
-    CALL READ_MMF_RUNOFF(noah_lsm%MMF_RUNOFF_FILE, XSTART, XEND, YSTART, YEND,&
+    ! mmf_runoff_file was removed from the namelist (dead field: it was always
+    ! forced blank here even before the namelist migration -- see
+    ! namelist_migration_plan.md). This call was already non-functional with
+    ! runoff_option==5; preserved as-is, now passing the same blank literal.
+    CALL READ_MMF_RUNOFF(" ", XSTART, XEND, YSTART, YEND,&
                          ZWTXY,EQZWT,RIVERBEDXY,RIVERCONDXY,PEXPXY,FDEPTHXY)
   end if
 

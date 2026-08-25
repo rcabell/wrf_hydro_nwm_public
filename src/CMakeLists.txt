@@ -100,6 +100,16 @@ if (HYDRO_LSM MATCHES "NoahMP")
         add_dependencies(hydro_noahmp_cpl hydro_mpp )
         add_dependencies(hydro_noahmp_cpl hydro_driver )
 
+        # config.F90 (hydro_orchestrator) now reads NOAHLSM_OFFLINE via the
+        # NoahMP submodule's own namelist reader -- see namelist_migration_plan.md.
+        # Added here (not in OrchestratorLayer/CMakeLists.txt) because noahmp_submodule
+        # doesn't exist as a target yet when that subdirectory is processed.
+        # CMP0079 NEW is required to link a target (hydro_orchestrator) to a
+        # library defined in a different directory (Land_models/NoahMP/noahmp).
+        cmake_policy(SET CMP0079 NEW)
+        add_dependencies(hydro_orchestrator noahmp_submodule)
+        target_link_libraries(hydro_orchestrator PRIVATE noahmp_submodule)
+
         add_executable(wrfhydro
                 Land_models/NoahMP/IO_code/main_hrldas_driver.F
                 Land_models/NoahMP/IO_code/module_hrldas_netcdf_io.F
