@@ -9,6 +9,12 @@ MODULE module_sf_noahmpdrv
   USE NoahmpIOVarType
   USE NoahmpIOVarInitMod, ONLY: NoahmpIOVarInitDefault
   USE NoahmpReadTableMod, ONLY: NoahmpReadTable
+  ! Namelist-derived physics options now come straight from the NoahMP
+  ! submodule's own namelist reader (see namelist_migration_plan.md) instead
+  ! of being unpacked into individual dummy arguments by the WRF-Hydro driver
+  ! -- so a new upstream NoahMP namelist option reaches NoahmpIO_sub with no
+  ! change needed here or in module_NoahMP_hrldas_driver.F.
+  USE config_base, ONLY: noahmp_io_singleton
 
   type(NoahmpIO_type), save :: NoahmpIO_sub
   logical, save :: submodule_initialized = .false.
@@ -691,25 +697,34 @@ CONTAINS
     NoahmpIO_sub%SF_URBAN_PHYSICS  = 0
     NoahmpIO_sub%ZSOIL(1:NSOIL) = ZSOIL(1:NSOIL)
 
-! Set physics options on NoahmpIO bridge
-    NoahmpIO_sub%IOPT_DVEG    = IDVEG
-    NoahmpIO_sub%IOPT_CRS     = IOPT_CRS
-    NoahmpIO_sub%IOPT_BTR     = IOPT_BTR
-    NoahmpIO_sub%IOPT_RUNSRF  = IOPT_RUN
-    NoahmpIO_sub%IOPT_RUNSUB  = IOPT_RUN
-    NoahmpIO_sub%IOPT_SFC     = IOPT_SFC
-    NoahmpIO_sub%IOPT_FRZ     = IOPT_FRZ
-    NoahmpIO_sub%IOPT_INF     = IOPT_INF
-    NoahmpIO_sub%IOPT_RAD     = IOPT_RAD
-    NoahmpIO_sub%IOPT_ALB     = IOPT_ALB
-    NoahmpIO_sub%IOPT_SNF     = IOPT_SNF
-    NoahmpIO_sub%IOPT_TBOT    = IOPT_TBOT
-    NoahmpIO_sub%IOPT_STC     = IOPT_STC
-    NoahmpIO_sub%IOPT_GLA     = IOPT_GLA
-    NoahmpIO_sub%IOPT_RSF     = IOPT_RSF
-    NoahmpIO_sub%IOPT_SOIL    = IOPT_SOIL
-    NoahmpIO_sub%IOPT_PEDO    = IOPT_PEDO
-    NoahmpIO_sub%IOPT_CROP    = IOPT_CROP
+! Set physics options on NoahmpIO bridge. Sourced from noahmp_io_singleton
+! (populated by NoahmpReadNamelist), not from the IDVEG/IOPT_*/IOPT_RUN dummy
+! arguments above -- those are still passed in (module_NoahMP_hrldas_driver.F
+! unpacks the same noah_lsm% fields into them) but are no longer used here.
+!
+! IOPT_RUNSUB intentionally mirrors IOPT_RUNSRF rather than reading
+! noahmp_io_singleton%IOPT_RUNSUB (i.e. SUBSURFACE_RUNOFF_OPTION): that
+! preserves a pre-existing quirk where the single IOPT_RUN argument fed both
+! fields and SUBSURFACE_RUNOFF_OPTION was silently unused. Not fixed here --
+! out of scope for a namelist-plumbing refactor; worth revisiting separately.
+    NoahmpIO_sub%IOPT_DVEG    = noahmp_io_singleton%IOPT_DVEG
+    NoahmpIO_sub%IOPT_CRS     = noahmp_io_singleton%IOPT_CRS
+    NoahmpIO_sub%IOPT_BTR     = noahmp_io_singleton%IOPT_BTR
+    NoahmpIO_sub%IOPT_RUNSRF  = noahmp_io_singleton%IOPT_RUNSRF
+    NoahmpIO_sub%IOPT_RUNSUB  = noahmp_io_singleton%IOPT_RUNSRF
+    NoahmpIO_sub%IOPT_SFC     = noahmp_io_singleton%IOPT_SFC
+    NoahmpIO_sub%IOPT_FRZ     = noahmp_io_singleton%IOPT_FRZ
+    NoahmpIO_sub%IOPT_INF     = noahmp_io_singleton%IOPT_INF
+    NoahmpIO_sub%IOPT_RAD     = noahmp_io_singleton%IOPT_RAD
+    NoahmpIO_sub%IOPT_ALB     = noahmp_io_singleton%IOPT_ALB
+    NoahmpIO_sub%IOPT_SNF     = noahmp_io_singleton%IOPT_SNF
+    NoahmpIO_sub%IOPT_TBOT    = noahmp_io_singleton%IOPT_TBOT
+    NoahmpIO_sub%IOPT_STC     = noahmp_io_singleton%IOPT_STC
+    NoahmpIO_sub%IOPT_GLA     = noahmp_io_singleton%IOPT_GLA
+    NoahmpIO_sub%IOPT_RSF     = noahmp_io_singleton%IOPT_RSF
+    NoahmpIO_sub%IOPT_SOIL    = noahmp_io_singleton%IOPT_SOIL
+    NoahmpIO_sub%IOPT_PEDO    = noahmp_io_singleton%IOPT_PEDO
+    NoahmpIO_sub%IOPT_CROP    = noahmp_io_singleton%IOPT_CROP
     ! IOPT_TKSNO must be in 1..5; the refactored SnowThermalProperty leaves
     ! ThermConductSnow at its undefined_real init value (~3.4e38) otherwise,
     ! which propagates as NaN through GrdHeatCoeff into the ground-temperature
