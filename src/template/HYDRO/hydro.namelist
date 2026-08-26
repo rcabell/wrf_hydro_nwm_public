@@ -278,3 +278,14 @@ invDistTimeWeightBias = .TRUE.
 noConstInterfBias = .FALSE.
 
 /
+
+&WRF_HYDRO_OFFLINE
+
+! Specification of forcing data:  1=HRLDAS-hr format, 2=HRLDAS-min format, 3=WRF,
+!    4=Idealized, 5=Idealized w/ spec. precip.,
+!    6=HRLDAS-hr format w/ spec. precip., 7=WRF w/ spec. precip.,
+!    9=Channel-only forcing, see hydro.namelist output_channelBucket_influxes
+!    10=Channel+Bucket only forcing, see hydro.namelist output_channelBucket_influxes
+FORC_TYP = 1
+
+/
