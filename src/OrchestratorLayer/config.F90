@@ -727,8 +727,12 @@ contains
     !! Conditional default values for nuding_nlist
     if(maxAgePairsBiasPersist .eq. -99999) maxAgePairsBiasPersist = -1*nLastObs
 #endif
+
     close(12)
 
+    ! CROCUS_nlist stays in namelist.hrldas (LSM physics, not a WRF-Hydro
+    ! routing concern -- see namelist_migration_plan.md), so this still uses
+    ! read_crocus_namelist's own default of opening namelist.hrldas.
     call read_crocus_namelist(crocus_opts)
 ! #ifdef MPP_LAND
 !     endif
@@ -736,6 +740,19 @@ contains
 
     ! ADCHANGE: move these checks to more universal namelist checks...
     if ( io_config_outputs .eq. 4 ) RTOUT_DOMAIN = 0
+
+    ! NOAHLSM_OFFLINE's NSOIL (via noah_lsm%nsoil, set earlier by
+    ! init_noah_lsm_and_wrf_hydro) and hydro.namelist's own NSOIL should
+    ! always agree for the coupled offline driver -- nlst(did)%NSOIL/ZSOIL8
+    ! themselves are unused (see the commented-out assignment below), so this
+    ! is the only place drift between the two files' NSOIL would be caught.
+    ! ZSOIL8 is not cross-checked: it's cumulative soil-layer depths here vs.
+    ! noah_lsm%soil_thick_input's per-layer thicknesses, not directly
+    ! comparable without a unit conversion this check doesn't attempt.
+    if (NSOIL /= noah_lsm%nsoil) then
+       call hydro_stop("read_rt_nlst:: hydro.namelist NSOIL does not match " // &
+            "namelist.hrldas NSOIL -- these must agree.")
+    end if
 
     if(output_channelBucket_influx .ne. 0) then
        if(nlst(did)%dt .ne. out_dt*60) &
@@ -997,8 +1014,18 @@ contains
     ! reader (opens/closes namelist.hrldas itself). See namelist_migration_plan.md.
     call NoahmpReadNamelist(noahmp_io_singleton)
 
+    ! WRF_HYDRO_OFFLINE now lives in hydro.namelist, not namelist.hrldas (see
+    ! namelist_migration_plan.md). Read here (rather than from
+    ! init_namelist_rt_field, which also reads hydro.namelist) so wrf_hydro%*
+    ! stays populated at the same point in startup as before --
+    ! init_namelist_rt_field/HYDRO_ini runs later, after land_driver_ini has
+    ! already consumed it.
+    !
+    ! CROCUS_nlist stays in namelist.hrldas: it's LSM physics slated to be
+    ! ported into NoahMP upstream, so it belongs with NOAHLSM_OFFLINE rather
+    ! than WRF-Hydro's own hydro.namelist.
 #ifndef NCEP_WCOSS
-    open(30, file="namelist.hrldas", form="FORMATTED")
+    open(30, file="hydro.namelist", form="FORMATTED")
     read(30, NML=WRF_HYDRO_OFFLINE, iostat=ierr)
 #else
     open(11, form="FORMATTED")
@@ -1010,16 +1037,12 @@ contains
     endif
 
 #ifndef NCEP_WCOSS
-    call read_crocus_namelist(crocus_opts, 30)
-#else
-    call read_crocus_namelist(crocus_opts, 11)
-#endif
-
-#ifndef NCEP_WCOSS
     close(30)
 #else
     close(11)
 #endif
+
+    call read_crocus_namelist(crocus_opts)
 
     wrf_hydro%finemesh = 0!finemesh
     wrf_hydro%finemesh_factor = 0!finemesh_factor
