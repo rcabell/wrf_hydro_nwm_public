@@ -728,12 +728,27 @@ CONTAINS
     ! IOPT_TKSNO must be in 1..5; the refactored SnowThermalProperty leaves
     ! ThermConductSnow at its undefined_real init value (~3.4e38) otherwise,
     ! which propagates as NaN through GrdHeatCoeff into the ground-temperature
-    ! N-R solve. 1 = Stieglitz(Yen,1965), the documented default.
-    NoahmpIO_sub%IOPT_TKSNO   = 1
-    NoahmpIO_sub%IOPT_TDRN    = 0
-    NoahmpIO_sub%IOPT_IRR     = 0
-    NoahmpIO_sub%IOPT_IRRM    = 0
-    NoahmpIO_sub%IOPT_INFDV   = 0
+    ! N-R solve. 1 = Stieglitz(Yen,1965), the documented default. This used to
+    ! be hardcoded to sidestep the bug; now read from the namelist (like the
+    ! other options above) with an explicit range check standing in for the
+    ! old hardcode's implicit protection.
+    NoahmpIO_sub%IOPT_TKSNO   = noahmp_io_singleton%IOPT_TKSNO
+    if (NoahmpIO_sub%IOPT_TKSNO < 1 .or. NoahmpIO_sub%IOPT_TKSNO > 5) then
+       write(*,'(" ***** ERROR: SNOW_THERMAL_CONDUCTIVITY (IOPT_TKSNO) = ", I0, &
+                 " is out of range; must be 1..5 (see SnowThermalProperty).")') &
+             NoahmpIO_sub%IOPT_TKSNO
+       stop " ***** ERROR: SNOW_THERMAL_CONDUCTIVITY out of range"
+    endif
+    ! IOPT_TDRN/IRR/IRRM/INFDV (tile drainage, irrigation, DVIC infiltration)
+    ! were previously hardcoded off/default here because WRF-Hydro's driver
+    ! never wired them to a namelist option at all. Now read directly from
+    ! the namelist like the rest, so these NoahMP-upstream ag options work
+    ! here as soon as they're finalized upstream, with no further change
+    ! needed on the WRF-Hydro side.
+    NoahmpIO_sub%IOPT_TDRN    = noahmp_io_singleton%IOPT_TDRN
+    NoahmpIO_sub%IOPT_IRR     = noahmp_io_singleton%IOPT_IRR
+    NoahmpIO_sub%IOPT_IRRM    = noahmp_io_singleton%IOPT_IRRM
+    NoahmpIO_sub%IOPT_INFDV   = noahmp_io_singleton%IOPT_INFDV
 ! -----------------------------------------------------------------
 
     JLOOP : DO J=jts,jte
